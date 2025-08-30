@@ -1,442 +1,362 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Search, List, Grid, Map, Star, User } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../hooks/use-toast';
-import { 
-  Wrench, 
-  ArrowLeft,
-  User,
-  Building2,
-  Phone,
-  Send,
-  Clock,
-  Mail,
-  MapPin,
-  Star,
-  MessageCircle,
-  Shield,
-  CheckCircle,
-  Wifi,
-  RefreshCw,
-  Car
-} from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../components/ui/pagination';
+import { workshopAPI } from '../lib/api';
+import { Link } from 'react-router-dom';
+import GoogleMap from '../components/Map';
 
+interface Workshop {
+  _id?: string;
+  name: string;
+  description: string;
+  status: 'open' | 'closed';
+  rating: number;
+  reviewCount: number;
+  distance?: number;
+  location: {
+    city: string;
+    address: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
+  services: string[];
+  thumbnail?: string;
+  contact: {
+    phone: string;
+    email: string;
+  };
+  owner?: {
+    name: string;
+  };
+}
 
+interface ApiResponse {
+  workshops: Workshop[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
 
 const WorkshopDashboard = () => {
-  const { user, logout } = useAuth();
-  const { toast } = useToast();
-  const [admins, setAdmins] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedAdmin, setSelectedAdmin] = useState(null);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [requestForm, setRequestForm] = useState({
-    vehicleType: '',
-    issue: '',
-    location: '',
-    urgency: 'medium',
-    serviceType: 'repair'
-  });
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [distanceFilter, setDistanceFilter] = useState('all');
+  const [customDistance, setCustomDistance] = useState('');
+  const [view, setView] = useState<'list' | 'card' | 'map'>('card');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const fetchAdmins = useCallback(async () => {
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchWorkshops();
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [search, statusFilter, distanceFilter, customDistance, currentPage]);
+
+  const fetchWorkshops = async () => {
+    setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/auth/admins');
-      if (response.ok) {
-        const data = await response.json();
-        // Add real-time status to each admin
-        const enrichedAdmins = data.map(admin => ({
-          ...admin,
-          isOnline: Math.random() > 0.2, // 80% chance of being online
-          lastSeen: admin.isActive ? 'Just now' : `${Math.floor(Math.random() * 30)} minutes ago`,
-          responseTime: `${Math.floor(Math.random() * 3) + 2}-${Math.floor(Math.random() * 2) + 4} minutes`
-        }));
-        setAdmins(enrichedAdmins);
-        setLastUpdate(new Date());
+      const params: any = { page: currentPage };
+      if (search.trim()) params.search = search.trim();
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (distanceFilter !== 'all') {
+        const distance = distanceFilter === 'custom' ? customDistance : distanceFilter.replace('km', '');
+        if (distance && !isNaN(Number(distance))) {
+          params.distance = distance;
+        }
       }
+      
+      const response = await workshopAPI.getWorkshops(params);
+      const data: ApiResponse = response.data;
+      
+      setWorkshops(data.workshops || []);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to load admins", variant: "destructive" });
+      console.error('Failed to fetch workshops:', error);
+      setWorkshops([]);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
-
-  useEffect(() => {
-    fetchAdmins();
-    getUserLocation();
-    
-    // Real-time updates every 10 seconds
-    const interval = setInterval(fetchAdmins, 10000);
-    return () => clearInterval(interval);
-  }, [fetchAdmins]);
-
-  const getUserLocation = useCallback(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = `${position.coords.latitude}, ${position.coords.longitude}`;
-          setRequestForm(prev => ({ ...prev, location }));
-        },
-        () => setRequestForm(prev => ({ ...prev, location: 'Location not available' }))
-      );
-    }
-  }, []);
-
-  const connectWithAdmin = async () => {
-    if (!requestForm.issue || !requestForm.vehicleType) {
-      toast({ title: "Error", description: "Please fill all required fields", variant: "destructive" });
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:3001/api/requests/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          adminId: selectedAdmin._id,
-          mechanicId: selectedAdmin._id,
-          shopId: 'WORKSHOP',
-          message: `Service: ${requestForm.serviceType}\nVehicle: ${requestForm.vehicleType}\nIssue: ${requestForm.issue}`,
-          location: requestForm.location,
-          urgency: requestForm.urgency
-        }),
-      });
-
-      if (response.ok) {
-        toast({ title: "Connected!", description: `Your vehicle query has been sent to ${selectedAdmin.firstName}` });
-        setRequestForm({ vehicleType: '', issue: '', location: requestForm.location, urgency: 'medium', serviceType: 'repair' });
-        setSelectedAdmin(null);
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to connect with admin", variant: "destructive" });
-    }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" onClick={() => window.location.href = '/'}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                <Wrench className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">RoadGuard Workshop</h1>
-                <p className="text-sm text-muted-foreground">Connect with workshop admins</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <User className="w-4 h-4" />
-                <span className="text-sm">{user?.firstName} {user?.lastName}</span>
-              </div>
-              <Button variant="outline" onClick={logout}>
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+  const renderStars = (rating: number) => (
+    <div className="flex">
+      {[...Array(5)].map((_, i) => (
+        <Star key={i} className={`w-4 h-4 ${i < Math.floor(rating) ? 'fill-accent text-accent' : 'text-muted-foreground'}`} />
+      ))}
+    </div>
+  );
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
-              <Building2 className="h-10 w-10 text-primary" />
-              Live Workshop Admins
-              <Badge variant="secondary" className="ml-2">
-                <Wifi className="h-3 w-3 mr-1" />
-                Real-time
+  const WorkshopCard = ({ workshop }: { workshop: Workshop }) => (
+    <Card className="glass-effect border-primary/20 hover:border-primary/50 transition-smooth hover:emergency-glow group animate-fade-in">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-20 gradient-hero rounded-xl flex items-center justify-center overflow-hidden">
+            <img src={workshop.thumbnail || "https://via.placeholder.com/80x80?text=Workshop"} alt={workshop.name} className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="font-bold text-foreground text-lg group-hover:text-primary transition-smooth">{workshop.name}</h3>
+              <Badge 
+                variant={workshop.status === 'open' ? 'default' : 'secondary'}
+                className={workshop.status === 'open' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted text-muted-foreground'}
+              >
+                {workshop.status}
               </Badge>
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Connect instantly with workshop administrators for vehicle queries. 
-              Get professional assistance with real-time availability.
-            </p>
-            <div className="flex items-center justify-center gap-4 mt-4">
-              <p className="text-muted-foreground">{admins.length} admins online</p>
-              <Button variant="ghost" size="sm" onClick={fetchAdmins} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Updated: {lastUpdate.toLocaleTimeString()}
-              </p>
             </div>
-          </div>
-
-          {/* Admin Grid */}
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {[1,2,3,4].map(i => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-8">
-                    <div className="h-20 bg-muted rounded-full w-20 mx-auto mb-4"></div>
-                    <div className="h-4 bg-muted rounded w-3/4 mx-auto mb-2"></div>
-                    <div className="h-3 bg-muted rounded w-1/2 mx-auto"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {admins.map((admin) => (
-                <Card key={admin._id} className="hover:shadow-2xl transition-all duration-500 border-2 hover:border-primary/30 group">
-                  <CardContent className="p-8">
-                    <div className="space-y-6">
-                      {/* Admin Header */}
-                      <div className="text-center space-y-4">
-                        <div className="relative">
-                          <Avatar className="w-20 h-20 mx-auto border-4 border-primary/20 group-hover:border-primary/50 transition-colors">
-                            <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-primary to-primary/70 text-white">
-                              {admin.firstName[0]}{admin.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <Badge className={`absolute -bottom-2 left-1/2 transform -translate-x-1/2 ${
-                            admin.isOnline 
-                              ? 'bg-green-500 hover:bg-green-600 animate-pulse' 
-                              : 'bg-gray-500'
-                          }`}>
-                            <div className={`w-2 h-2 bg-white rounded-full mr-1 ${
-                              admin.isOnline ? 'animate-pulse' : ''
-                            }`}></div>
-                            {admin.isOnline ? 'Online' : 'Offline'}
-                          </Badge>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-2xl font-bold text-foreground">{admin.firstName} {admin.lastName}</h3>
-                          <p className="text-lg text-primary font-semibold">{admin.shopName}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Admin Details */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <div className="relative">
-                              <User className="h-4 w-4" />
-                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            </div>
-                            <span className="font-medium">Workshop Admin</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {[1,2,3,4,5].map(star => {
-                              const rating = 4.0 + Math.random() * 0.8; // Random rating between 4.0-4.8
-                              return (
-                                <Star key={star} className={`h-4 w-4 ${
-                                  star <= Math.floor(rating) 
-                                    ? 'fill-yellow-400 text-yellow-400' 
-                                    : 'text-gray-300'
-                                }`} />
-                              );
-                            })}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Phone className="h-4 w-4" />
-                          <span className="font-medium">{admin.phone}</span>
-                          <Badge variant="secondary" className={`text-xs ${
-                            admin.isOnline ? 'text-green-600' : 'text-gray-600'
-                          }`}>
-                            <Clock className="h-3 w-3 mr-1" />
-                            {admin.isOnline ? 'Active' : 'Offline'}
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Mail className="h-4 w-4" />
-                          <span className="font-medium">{admin.email}</span>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-2 mt-4">
-                          <Badge variant="outline">🔧 Vehicle Repair</Badge>
-                          <Badge variant="outline">🛠️ Maintenance</Badge>
-                          <Badge variant="outline">🔍 Diagnostics</Badge>
-                        </div>
-                      </div>
-                      
-                      {/* Connect Button */}
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            size="lg" 
-                            disabled={!admin.isOnline}
-                            className={`w-full text-lg py-6 group-hover:scale-105 transition-transform ${
-                              admin.isOnline 
-                                ? 'bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/90 hover:to-primary/70' 
-                                : 'bg-gray-400 cursor-not-allowed'
-                            }`}
-                            onClick={() => setSelectedAdmin(admin)}
-                          >
-                            <MessageCircle className="h-5 w-5 mr-2" />
-                            {admin.isOnline ? 'Send Vehicle Query' : 'Currently Offline'}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle className="text-2xl flex items-center gap-3">
-                              <div className="relative">
-                                <Avatar className="w-12 h-12">
-                                  <AvatarFallback className="bg-primary text-white">
-                                    {admin.firstName[0]}{admin.lastName[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                </div>
-                              </div>
-                              Vehicle Query to {admin.firstName}
-                            </DialogTitle>
-                            <div className="flex items-center gap-4 text-muted-foreground">
-                              <span>{admin.shopName} • Workshop Administrator</span>
-                              <Badge variant="outline" className={admin.isOnline ? "text-green-600 border-green-600" : "text-gray-600 border-gray-600"}>
-                                <div className={`w-2 h-2 rounded-full mr-1 ${
-                                  admin.isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
-                                }`}></div>
-                                {admin.isOnline ? 'Online Now' : 'Offline'}
-                              </Badge>
-                            </div>
-                            <div className="text-sm text-muted-foreground mt-2">
-                              Response time: Usually within {admin.responseTime}
-                            </div>
-                          </DialogHeader>
-                          
-                          <div className="space-y-6">
-                            {/* Real-time Status */}
-                            <div className={`border rounded-lg p-4 ${
-                              admin.isOnline 
-                                ? 'bg-green-50 border-green-200' 
-                                : 'bg-gray-50 border-gray-200'
-                            }`}>
-                              <div className={`flex items-center gap-2 ${
-                                admin.isOnline ? 'text-green-700' : 'text-gray-700'
-                              }`}>
-                                <div className={`w-3 h-3 rounded-full ${
-                                  admin.isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
-                                }`}></div>
-                                <span className="font-medium">
-                                  {admin.isOnline 
-                                    ? `${admin.firstName} is currently online and ready to assist with vehicle queries`
-                                    : `${admin.firstName} is currently offline. They were last seen ${admin.lastSeen}`
-                                  }
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label className="text-base">Query Type</Label>
-                                <Select value={requestForm.serviceType} onValueChange={(value) => setRequestForm({...requestForm, serviceType: value})}>
-                                  <SelectTrigger className="h-12">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="repair">🔧 Repair Query</SelectItem>
-                                    <SelectItem value="maintenance">🛠️ Maintenance</SelectItem>
-                                    <SelectItem value="inspection">🔍 Inspection</SelectItem>
-                                    <SelectItem value="emergency">🚨 Emergency</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label className="text-base">Vehicle Type *</Label>
-                                <Select value={requestForm.vehicleType} onValueChange={(value) => setRequestForm({...requestForm, vehicleType: value})}>
-                                  <SelectTrigger className="h-12">
-                                    <SelectValue placeholder="Select vehicle" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="car">🚗 Car</SelectItem>
-                                    <SelectItem value="motorcycle">🏍️ Motorcycle</SelectItem>
-                                    <SelectItem value="truck">🚛 Truck</SelectItem>
-                                    <SelectItem value="bus">🚌 Bus</SelectItem>
-                                    <SelectItem value="van">🚐 Van</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <Label className="text-base">Your Location</Label>
-                              <div className="relative">
-                                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  className="pl-10 h-12"
-                                  placeholder="Enter your current location"
-                                  value={requestForm.location}
-                                  onChange={(e) => setRequestForm({...requestForm, location: e.target.value})}
-                                />
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <Label className="text-base">Vehicle Query Details *</Label>
-                              <Textarea
-                                className="min-h-[120px] resize-none"
-                                placeholder="Please describe your vehicle issue or query in detail. Include symptoms, when it started, and any relevant information..."
-                                value={requestForm.issue}
-                                onChange={(e) => setRequestForm({...requestForm, issue: e.target.value})}
-                              />
-                            </div>
-                            
-                            <Button onClick={connectWithAdmin} size="lg" className="w-full h-14 text-lg bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600">
-                              <Send className="h-5 w-5 mr-2" />
-                              Send Vehicle Query
-                            </Button>
-                            <p className="text-xs text-center text-muted-foreground">
-                              Your query will be sent directly to {admin.firstName} who is currently online
-                            </p>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-          
-          {/* Trust Indicators */}
-          <div className="mt-16 text-center">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="flex flex-col items-center space-y-3">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Shield className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Certified Workshop Admins</h3>
-                <p className="text-muted-foreground text-sm">All admins are verified workshop professionals</p>
+            <div className="space-y-2 text-sm">
+              <p className="text-muted-foreground text-xs line-clamp-2">{workshop.description}</p>
+              <div className="flex items-center gap-2">
+                {renderStars(workshop.rating)}
+                <span className="text-accent font-medium">{workshop.rating}</span>
+                <span className="text-muted-foreground">({workshop.reviewCount} reviews)</span>
               </div>
-              <div className="flex flex-col items-center space-y-3">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Clock className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Real-time Availability</h3>
-                <p className="text-muted-foreground text-sm">Live updates on admin availability and response times</p>
+              <div className="text-foreground">{workshop.distance} km away</div>
+              <div className="text-muted-foreground">{workshop.location.city}, {workshop.location.address}</div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {workshop.services?.slice(0, 2).map((service, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-secondary/20 text-secondary rounded text-xs">
+                    {service}
+                  </span>
+                ))}
               </div>
-              <div className="flex flex-col items-center space-y-3">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Car className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Expert Vehicle Support</h3>
-                <p className="text-muted-foreground text-sm">Professional guidance for all vehicle types and issues</p>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <User className="w-4 h-4" />
+                <span>{workshop.owner?.name || 'Owner'}</span>
               </div>
             </div>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+
+  const WorkshopListItem = ({ workshop }: { workshop: Workshop }) => (
+    <div className="flex items-center gap-4 p-4 border-b border-border hover:bg-muted/50 transition-smooth">
+      <div className="w-16 h-16 gradient-hero rounded-lg flex items-center justify-center overflow-hidden">
+        <img src={workshop.thumbnail || "https://via.placeholder.com/64x64?text=Workshop"} alt={workshop.name} className="w-full h-full object-cover" />
+      </div>
+      <div className="flex-1">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-bold text-foreground text-lg">{workshop.name}</h3>
+          <Badge 
+            variant={workshop.status === 'open' ? 'default' : 'secondary'}
+            className={workshop.status === 'open' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted text-muted-foreground'}
+          >
+            {workshop.status}
+          </Badge>
+        </div>
+        <div className="space-y-1">
+          <p className="text-muted-foreground text-sm">{workshop.description}</p>
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              {renderStars(workshop.rating)}
+              <span className="text-accent font-medium">{workshop.rating}</span>
+              <span className="text-muted-foreground">({workshop.reviewCount})</span>
+            </div>
+            <span className="text-foreground">{workshop.distance} km</span>
+            <span className="text-muted-foreground">{workshop.location.city}</span>
+            <span className="text-muted-foreground">by {workshop.owner?.name || 'Owner'}</span>
+          </div>
+          <div className="flex gap-2 mt-2">
+            {workshop.services?.slice(0, 3).map((service, idx) => (
+              <span key={idx} className="px-2 py-1 bg-secondary/20 text-secondary rounded text-xs">
+                {service}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-20 w-40 h-40 gradient-emergency rounded-full opacity-5 animate-float"></div>
+        <div className="absolute bottom-20 right-20 w-32 h-32 gradient-trust rounded-full opacity-10 animate-float" style={{ animationDelay: '1s' }}></div>
+      </div>
+      
+      <div className="container mx-auto px-4 py-6 relative z-10">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold gradient-emergency bg-clip-text text-transparent">
+              Workshop Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-2">Find the perfect workshop for your needs</p>
+          </div>
+          <Button 
+            variant="emergency" 
+            className="emergency-glow"
+            onClick={() => window.location.href = '/login'}
+          >
+            Login
+          </Button>
+        </div>
+
+        {/* Search and Filters */}
+        <Card className="glass-effect border-primary/20 mb-8 emergency-glow">
+          <CardContent className="p-6">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex-1 min-w-64">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                  <Input
+                    placeholder="Search workshops..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-12 glass-effect border-primary/20 focus:border-primary/50"
+                  />
+                </div>
+              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32 glass-effect border-primary/20">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={distanceFilter} onValueChange={setDistanceFilter}>
+                <SelectTrigger className="w-32 glass-effect border-primary/20">
+                  <SelectValue placeholder="Distance" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="2km">2 km</SelectItem>
+                  <SelectItem value="5km">5 km</SelectItem>
+                  <SelectItem value="10km">10 km</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {distanceFilter === 'custom' && (
+                <Input
+                  placeholder="Distance (km)"
+                  value={customDistance}
+                  onChange={(e) => setCustomDistance(e.target.value)}
+                  className="w-32 glass-effect border-primary/20"
+                  type="number"
+                />
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  variant={view === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('list')}
+                  className={view === 'list' ? 'gradient-emergency' : 'glass-effect border-primary/20'}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={view === 'card' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('card')}
+                  className={view === 'card' ? 'gradient-emergency' : 'glass-effect border-primary/20'}
+                >
+                  <Grid className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={view === 'map' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('map')}
+                  className={view === 'map' ? 'gradient-emergency' : 'glass-effect border-primary/20'}
+                >
+                  <Map className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Content */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="text-muted-foreground mt-4 text-lg">Loading workshops...</p>
+          </div>
+        ) : workshops.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground text-lg">No workshops found. Try adjusting your filters.</p>
+          </div>
+        ) : (
+          <>
+            {view === 'map' ? (
+              <Card className="glass-effect border-primary/20 overflow-hidden">
+                <GoogleMap 
+                  center={{ lat: 40.7128, lng: -74.0060 }}
+                  zoom={12}
+                  height="500px"
+                  showUserLocation={true}
+                />
+              </Card>
+            ) : view === 'list' ? (
+              <Card className="glass-effect border-primary/20 overflow-hidden">
+                {workshops.map(workshop => (
+                  <WorkshopListItem key={workshop._id} workshop={workshop} />
+                ))}
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {workshops.map(workshop => (
+                  <WorkshopCard key={workshop._id} workshop={workshop} />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center">
+                <Pagination>
+                  <PaginationContent className="gap-2">
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        className={`${currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} glass-effect border-primary/20`}
+                      />
+                    </PaginationItem>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <PaginationItem key={i + 1}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(i + 1)}
+                          isActive={currentPage === i + 1}
+                          className={`cursor-pointer ${currentPage === i + 1 ? 'gradient-emergency text-primary-foreground' : 'glass-effect border-primary/20'}`}
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        className={`${currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} glass-effect border-primary/20`}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
