@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { requestAPI } from "@/lib/api";
+import { Bell } from "lucide-react";
 
 interface Request {
   _id: string;
@@ -81,7 +82,8 @@ export default function AdminDashboard() {
           onClick={() => toast({ title: "Notifications", description: "3 new service requests pending" })}
           className="bg-blue-600 hover:bg-blue-700"
         >
-          🔔 Notifications
+          <Bell className="h-4 w-4 mr-2" />
+          Notifications
         </Button>
       </div>
       

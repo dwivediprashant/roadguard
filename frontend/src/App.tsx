@@ -14,7 +14,9 @@ const Signup = lazy(() => import("./pages/Signup"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const WorkerDashboard = lazy(() => import("./pages/WorkerDashboard"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
+const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -53,15 +55,15 @@ const DashboardRoute = () => {
     return <AdminDashboard />;
   }
   
-  if (user?.userType === 'mechanic') {
+  if (user?.userType === 'worker') {
     return <WorkerDashboard />;
   }
   
-  if (user?.userType === 'workshop') {
-    return <WorkshopDashboard />;
+  if (user?.userType === 'user') {
+    return <UserDashboard />;
   }
   
-  return <AdminDashboard />;
+  return <UserDashboard />;
 };
 
 const App = () => (
@@ -79,9 +81,10 @@ const App = () => (
                 <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
                 <Route path="/admin-login" element={<AdminLogin />} />
+                <Route path="/worker-login" element={<WorkerLogin />} />
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/worker" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
-                <Route path="/workshop" element={<ProtectedRoute><WorkshopDashboard /></ProtectedRoute>} />
+                <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
