@@ -16,7 +16,8 @@ import {
   Shield,
   Star,
   Users,
-  ArrowLeft
+  ArrowLeft,
+  Building2
 } from "lucide-react";
 
 const WorkerLogin = () => {
@@ -25,6 +26,7 @@ const WorkerLogin = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    shopId: "",
   });
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -48,6 +50,7 @@ const WorkerLogin = () => {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
+          shopId: formData.shopId,
         }),
       });
 
@@ -155,6 +158,24 @@ const WorkerLogin = () => {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="shopId">Shop ID (Optional)</Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="shopId"
+                      type="text"
+                      placeholder="Enter shop ID to join/update shop"
+                      value={formData.shopId}
+                      onChange={(e) => handleInputChange("shopId", e.target.value.toUpperCase())}
+                      className="pl-10 border-secondary/20 focus:border-secondary/50"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty to login with current shop assignment
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">

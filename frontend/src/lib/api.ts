@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -20,6 +20,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('API Error:', error.response?.data || error.message);
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -40,12 +41,18 @@ export const authAPI = {
   login: (credentials: any) => api.post('/auth/login', credentials),
   workerLogin: (credentials: any) => api.post('/auth/worker-login', credentials),
   userLogin: (credentials: any) => api.post('/auth/user-login', credentials),
+  adminSignup: (adminData: any) => api.post('/auth/admin-signup', adminData),
+  workerSignup: (workerData: any) => api.post('/auth/worker-signup', workerData),
   getCurrentUser: () => api.get('/auth/me'),
   updateProfile: (profileData: any) => api.put('/auth/profile', profileData),
+  getShopInfo: (shopId: string) => api.get(`/auth/shop/${shopId}`),
+  getShopWorkers: (shopId: string) => api.get(`/auth/shop/${shopId}/workers`),
 };
 
 export const adminAPI = {
   getWorkers: () => api.get('/admin/workers'),
+  getShopRequests: () => api.get('/admin/requests'),
+  getMyShopWorkers: (shopId: string) => api.get(`/auth/shop/${shopId}/workers`),
 };
 
 export const workerAPI = {

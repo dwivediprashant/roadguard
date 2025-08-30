@@ -6,7 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, User, X, ChevronDown } from "lucide-react";
+import { Bell, User, X, ChevronDown, Store } from "lucide-react";
+import ShopWorkers from "@/components/ShopWorkers";
 
 export default function AdminDashboard() {
   const [workshopOpen, setWorkshopOpen] = useState(true);
@@ -17,6 +18,9 @@ export default function AdminDashboard() {
   const [sortBy, setSortBy] = useState('nearby');
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const { user } = useAuth();
+  
+  const shopId = localStorage.getItem('shopId');
+  const shopName = user?.shopName || localStorage.getItem('shopName');
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -139,6 +143,19 @@ export default function AdminDashboard() {
           <CardContent className="p-12 text-center">
             <div className="max-w-2xl mx-auto">
               <h2 className="text-2xl font-bold gradient-emergency bg-clip-text text-transparent mb-4">Admin Dashboard</h2>
+              
+              {/* Shop Information */}
+              {shopId && (
+                <div className="glass-effect border-primary/20 rounded-lg p-4 mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Store className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-primary">Shop Information</h3>
+                  </div>
+                  <p className="text-lg font-medium">{shopName}</p>
+                  <p className="text-sm text-muted-foreground">Shop ID: {shopId}</p>
+                </div>
+              )}
+              
               <div className="bg-muted/50 border-2 border-dashed border-primary/30 rounded-lg p-8">
                 <p className="text-lg text-muted-foreground leading-relaxed">
                   Dashboard to display the statistics of completed service & employee performance
@@ -152,8 +169,8 @@ export default function AdminDashboard() {
                   <p className="text-2xl font-bold text-foreground">24</p>
                 </div>
                 <div className="glass-effect border-primary/20 rounded-lg p-4 trust-glow">
-                  <h3 className="font-semibold text-secondary">Active Workers</h3>
-                  <p className="text-2xl font-bold text-foreground">8</p>
+                  <h3 className="font-semibold text-secondary">Shop Workers</h3>
+                  <p className="text-2xl font-bold text-foreground">-</p>
                 </div>
                 <div className="glass-effect border-primary/20 rounded-lg p-4">
                   <h3 className="font-semibold text-accent">Pending Requests</h3>
@@ -163,6 +180,9 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Shop Workers */}
+        {shopId && <ShopWorkers shopId={shopId} />}
 
         {/* Notification Panel (Screen 2) */}
         {showNotificationPanel && (

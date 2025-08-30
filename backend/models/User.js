@@ -42,14 +42,22 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-// <<<<<<< HEAD
+  shopId: {
+    type: String,
+    uppercase: true
+  },
+  shopName: {
+    type: String,
+    required: function() {
+      return this.userType === 'admin';
+    }
+  },
   resetPasswordOTP: {
     type: String
   },
   resetPasswordExpiry: {
     type: Date
-  }
-,
+  },
   // Profile fields
   currentEmployer: {
     type: String,

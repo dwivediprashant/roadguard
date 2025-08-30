@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import SimpleMap from "@/components/SimpleMap";
+import ShopsList from "@/components/ShopsList";
 import { 
   Car, 
   MapPin, 
@@ -66,7 +67,10 @@ const UserDashboard = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto space-y-8">
+          {/* Shops List */}
+          <ShopsList />
+          
           {/* Live Location Map */}
           <Card>
             <CardHeader>
@@ -76,7 +80,7 @@ const UserDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div style={{ height: '500px' }}>
+              <div style={{ height: '400px' }}>
                 <SimpleMap />
               </div>
             </CardContent>
