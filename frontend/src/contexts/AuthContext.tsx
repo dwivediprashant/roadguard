@@ -7,7 +7,7 @@ interface User {
   lastName: string;
   email: string;
   phone: string;
-  userType: 'driver' | 'mechanic';
+  userType: 'user' | 'worker';
 }
 
 interface AuthContextType {
