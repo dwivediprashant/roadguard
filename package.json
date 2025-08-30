@@ -6,7 +6,8 @@
     "start": "concurrently --kill-others-on-fail --silent \"npm run backend\" \"npm run frontend\"",
     "install": "cd frontend && npm install && cd ../backend && npm install && cd ..",
     "frontend": "cd frontend && npm run dev",
-    "backend": "cd backend && npm run dev"
+    "backend": "cd backend && npm run dev",
+    "create-admin": "cd backend && node createAdmin.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

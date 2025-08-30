@@ -7,7 +7,7 @@ interface User {
   lastName: string;
   email: string;
   phone: string;
-  userType: 'user' | 'worker';
+  userType: 'user' | 'worker' | 'admin';
 }
 
 interface AuthContextType {
@@ -42,6 +42,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
+
+
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
@@ -53,6 +55,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authAPI.login({ email, password });
       const { token: newToken, user: userData } = response.data;
+
+
 
       setToken(newToken);
       setUser(userData);

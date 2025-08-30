@@ -41,6 +41,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -51,6 +52,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const DashboardRoute = () => {
   const { user } = useAuth();
   
+
   if (user?.userType === 'admin') {
     return <AdminDashboard />;
   }

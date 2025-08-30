@@ -19,7 +19,7 @@ router.post('/register', [
   body('email').isEmail().withMessage('Valid email is required'),
   body('phone').notEmpty().withMessage('Phone number is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('userType').isIn(['user', 'worker']).withMessage('Invalid user type')
+  body('userType').isIn(['user', 'worker', 'admin']).withMessage('Invalid user type')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
