@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { requestAPI } from "@/lib/api";
-import { Bell } from "lucide-react";
+import { Bell, ArrowLeft } from "lucide-react";
 
 interface Request {
   _id: string;
@@ -77,7 +77,12 @@ export default function AdminDashboard() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => window.location.href = '/'}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        </div>
         <Button 
           onClick={() => toast({ title: "Notifications", description: "3 new service requests pending" })}
           className="bg-blue-600 hover:bg-blue-700"
