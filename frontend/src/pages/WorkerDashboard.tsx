@@ -115,6 +115,10 @@ const WorkerDashboard = () => {
     toast({ title: "Progress Updated", description: `Task marked as ${newProgress.replace('_', ' ')}` });
   };
 
+  const closePopupNotification = (id) => {
+    setPopupNotifications(prev => prev.filter(notif => notif.id !== id));
+  };
+
   const filteredTasks = tasks.filter(task => {
     if (filters.category !== 'all' && task.category !== filters.category) return false;
     if (filters.status !== 'all' && task.status !== filters.status) return false;
@@ -474,6 +478,12 @@ const WorkerDashboard = () => {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Notification Popups */}
+        <NotificationPopup 
+          notifications={popupNotifications} 
+          onClose={closePopupNotification} 
+        />
       </div>
     </div>
   );
