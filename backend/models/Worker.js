@@ -6,6 +6,11 @@ const workerSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  shopId: {
+    type: String,
+    required: true,
+    uppercase: true
+  },
   availability: {
     type: String,
     enum: ['available', 'in_service', 'not_available'],

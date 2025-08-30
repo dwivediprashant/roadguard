@@ -2,13 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Request from './models/Request.js';
 import Task from './models/Task.js';
 import Worker from './models/Worker.js';
 import authRoutes from './routes/auth.js';
 import workerRoutes from './routes/worker.js';
 import seedRoutes from './routes/seed.js';
 import workshopRoutes from './routes/workshops.js';
+import requestRoutes from './routes/requests.js';
 import { authenticate } from './middleware/auth.js';
 import { authenticateUser } from './middleware/workerAuth.js';
 
@@ -40,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/worker', workerRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/workshops', workshopRoutes);
+app.use('/api/requests', requestRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'RoadGuard API is running' });
@@ -90,34 +91,15 @@ app.get('/api/init', async (req, res) => {
   }
 });
 
-app.get('/api/requests', authenticate, async (req, res) => {
-  try {
-    const requests = await Request.find().sort({ createdAt: -1 });
-    res.json(requests);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-app.post('/api/requests', authenticate, async (req, res) => {
-  try {
-    const request = new Request({ ...req.body, userId: req.user._id });
-    await request.save();
-    res.status(201).json(request);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.put('/api/requests/:id', authenticate, async (req, res) => {
-  try {
-    const request = await Request.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(request);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`✅ Backend server running on port ${PORT}`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Port ${PORT} is busy, trying ${PORT + 1}`);
+    app.listen(PORT + 1, () => {
+      console.log(`✅ Backend server running on port ${PORT + 1}`);
+    });
+  }
 });

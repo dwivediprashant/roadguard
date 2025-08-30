@@ -6,13 +6,40 @@ const requestSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  customer: { type: String, required: true },
-  service: { type: String, required: true },
-  location: { type: String, required: true },
-  status: { type: String, enum: ['pending', 'assigned', 'completed'], default: 'pending' },
-  assignedWorker: { type: String },
-  comments: { type: String },
-  createdAt: { type: Date, default: Date.now }
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  mechanicId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  shopId: {
+    type: String,
+    required: true
+  },
+  message: {
+    type: String,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected', 'completed'],
+    default: 'pending'
+  },
+  location: {
+    type: String,
+    required: true
+  },
+  urgency: {
+    type: String,
+    enum: ['low', 'medium', 'high'],
+    default: 'medium'
+  }
+}, {
+  timestamps: true
 });
 
 export default mongoose.model('Request', requestSchema);
