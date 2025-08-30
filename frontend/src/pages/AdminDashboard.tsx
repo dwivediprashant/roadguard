@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { requestAPI } from "@/lib/api";
 
 interface Request {
   _id: string;
@@ -19,31 +22,54 @@ const mockWorkers = ["Mike Johnson", "Sarah Davis", "Tom Brown", "Lisa Garcia"];
 
 export default function AdminDashboard() {
   const [requests, setRequests] = useState<Request[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { token } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchRequests();
   }, []);
 
   const fetchRequests = async () => {
+    if (!token) return;
+    
+    setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/requests');
-      const data = await response.json();
-      setRequests(data);
-    } catch (error) {
+      const response = await requestAPI.getAll();
+      const data = response.data;
+      setRequests(Array.isArray(data) ? data : []);
+    } catch (error: any) {
       console.error('Error fetching requests:', error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to fetch requests. Please try again.",
+        variant: "destructive"
+      });
+      setRequests([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const assignWorker = async (requestId: string, worker: string) => {
+    if (!token) return;
+    
     try {
-      await fetch(`http://localhost:3001/api/requests/${requestId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'assigned', assignedWorker: worker })
+      await requestAPI.update(requestId, { status: 'assigned', assignedWorker: worker });
+      
+      toast({
+        title: "Success",
+        description: `Worker ${worker} assigned successfully.`
       });
+      
       fetchRequests();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error assigning worker:', error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to assign worker. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -51,8 +77,17 @@ export default function AdminDashboard() {
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
       
-      <div className="grid gap-4">
-        {requests.map(request => (
+      {isLoading ? (
+        <div className="text-center py-8">
+          <p>Loading requests...</p>
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No requests found.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {requests.map(request => (
           <Card key={request._id}>
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
@@ -85,8 +120,9 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

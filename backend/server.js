@@ -3,6 +3,8 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Request from './models/Request.js';
+import authRoutes from './routes/auth.js';
+import { authenticate } from './middleware/auth.js';
 
 dotenv.config();
 
@@ -18,11 +20,13 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Routes
+app.use('/api/auth', authRoutes);
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'RoadGuard API is running' });
 });
 
-app.get('/api/requests', async (req, res) => {
+app.get('/api/requests', authenticate, async (req, res) => {
   try {
     const requests = await Request.find().sort({ createdAt: -1 });
     res.json(requests);
@@ -31,9 +35,9 @@ app.get('/api/requests', async (req, res) => {
   }
 });
 
-app.post('/api/requests', async (req, res) => {
+app.post('/api/requests', authenticate, async (req, res) => {
   try {
-    const request = new Request(req.body);
+    const request = new Request({ ...req.body, userId: req.user._id });
     await request.save();
     res.status(201).json(request);
   } catch (error) {
@@ -41,7 +45,7 @@ app.post('/api/requests', async (req, res) => {
   }
 });
 
-app.put('/api/requests/:id', async (req, res) => {
+app.put('/api/requests/:id', authenticate, async (req, res) => {
   try {
     const request = await Request.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(request);
