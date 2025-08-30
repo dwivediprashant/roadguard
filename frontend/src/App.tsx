@@ -13,6 +13,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const WorkerDashboard = lazy(() => import("./pages/WorkerDashboard"));
+const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -47,8 +48,16 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const DashboardRoute = () => {
   const { user } = useAuth();
   
+  if (user?.userType === 'admin') {
+    return <AdminDashboard />;
+  }
+  
   if (user?.userType === 'mechanic') {
     return <WorkerDashboard />;
+  }
+  
+  if (user?.userType === 'workshop') {
+    return <WorkshopDashboard />;
   }
   
   return <AdminDashboard />;
@@ -70,6 +79,7 @@ const App = () => (
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/worker" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
+                <Route path="/workshop" element={<ProtectedRoute><WorkshopDashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
