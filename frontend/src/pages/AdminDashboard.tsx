@@ -75,7 +75,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <Button 
+          onClick={() => toast({ title: "Notifications", description: "3 new service requests pending" })}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          🔔 Notifications
+        </Button>
+      </div>
       
       {isLoading ? (
         <div className="text-center py-8">
