@@ -84,7 +84,6 @@ const SignupPage = () => {
 
     try {
       const { confirmPassword, ...userData } = formData;
-      console.log('Sending registration data:', userData);
       await register(userData);
       toast({
         title: "Registration successful",

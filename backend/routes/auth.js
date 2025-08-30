@@ -22,10 +22,8 @@ router.post('/register', [
   body('userType').isIn(['user', 'worker']).withMessage('Invalid user type')
 ], async (req, res) => {
   try {
-    console.log('Registration request body:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
       return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array() });
     }
 
@@ -63,7 +61,6 @@ router.post('/register', [
       }
     });
   } catch (error) {
-    console.error('Registration error:', error);
     res.status(500).json({ error: error.message });
   }
 });
