@@ -10,6 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
+
+// Google Calendar API configuration
+const GOOGLE_API_KEY = 'AIzaSyClKCOHalvIwuSUxhAWl6FNsdF4mYMlWWc';
+const CALENDAR_ID = 'primary';
 import { 
   Settings2, Bell, User, Search, Calendar, List, Grid3X3, 
   MapPin, Clock, DollarSign, MessageCircle, Navigation,
@@ -54,11 +58,143 @@ const WorkerDashboard = () => {
   const [message, setMessage] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isGoogleAPILoaded, setIsGoogleAPILoaded] = useState(false);
+  const [isCalendarAuthorized, setIsCalendarAuthorized] = useState(false);
 
   useEffect(() => {
     fetchTasks();
     fetchNotifications();
+    loadGoogleAPI();
+    setWorkerOnline();
+    
+    // Set worker offline when leaving the page
+    const handleBeforeUnload = () => {
+      setWorkerOffline();
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      setWorkerOffline();
+    };
   }, []);
+
+  const setWorkerOnline = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:3001/api/workers/online', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (error) {
+      console.error('Error setting worker online:', error);
+    }
+  };
+
+  const setWorkerOffline = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:3001/api/workers/offline', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (error) {
+      console.error('Error setting worker offline:', error);
+    }
+  };
+
+  const loadGoogleAPI = () => {
+    if (window.gapi) {
+      initializeGoogleAPI();
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.onload = initializeGoogleAPI;
+    document.body.appendChild(script);
+  };
+
+  const initializeGoogleAPI = () => {
+    window.gapi.load('client:auth2', () => {
+      window.gapi.client.init({
+        apiKey: GOOGLE_API_KEY,
+        clientId: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com',
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+        scope: 'https://www.googleapis.com/auth/calendar'
+      }).then(() => {
+        setIsGoogleAPILoaded(true);
+        const authInstance = window.gapi.auth2.getAuthInstance();
+        setIsCalendarAuthorized(authInstance.isSignedIn.get());
+      }).catch(error => {
+        console.error('Error initializing Google API:', error);
+      });
+    });
+  };
+
+  const authorizeCalendar = async () => {
+    try {
+      const authInstance = window.gapi.auth2.getAuthInstance();
+      await authInstance.signIn();
+      setIsCalendarAuthorized(true);
+      toast({ title: "Success", description: "Google Calendar authorized successfully!" });
+    } catch (error) {
+      console.error('Authorization error:', error);
+      toast({ title: "Error", description: "Failed to authorize Google Calendar", variant: "destructive" });
+    }
+  };
+
+  const createGoogleCalendarEvent = async (task: Task) => {
+    if (!isCalendarAuthorized) {
+      await authorizeCalendar();
+      return;
+    }
+
+    try {
+      const startTime = new Date(`${task.date} ${task.time}`);
+      const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+
+      const event = {
+        summary: `Service Task: ${task.service}`,
+        description: `Customer: ${task.customer}\nLocation: ${task.location}\nService: ${task.service}\nPriority: ${task.priority}`,
+        start: {
+          dateTime: startTime.toISOString(),
+          timeZone: 'America/New_York'
+        },
+        end: {
+          dateTime: endTime.toISOString(),
+          timeZone: 'America/New_York'
+        },
+        location: task.location,
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'email', minutes: 24 * 60 },
+            { method: 'popup', minutes: 30 }
+          ]
+        }
+      };
+
+      const response = await window.gapi.client.calendar.events.insert({
+        calendarId: CALENDAR_ID,
+        resource: event
+      });
+
+      toast({ 
+        title: "Success", 
+        description: "Task added to Google Calendar successfully!" 
+      });
+      
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to add task to calendar", 
+        variant: "destructive" 
+      });
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -707,6 +843,16 @@ const WorkerDashboard = () => {
                   <div className="bg-gray-700 p-4 rounded-lg">
                     <h3 className="font-medium text-white mb-3">Quick Actions</h3>
                     <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="border-gray-500 text-gray-300 hover:bg-gray-600"
+                        onClick={() => createGoogleCalendarEvent(selectedTask!)}
+                        disabled={!isGoogleAPILoaded}
+                      >
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Add to Calendar
+                      </Button>
                       <Button size="sm" variant="outline" className="border-gray-500 text-gray-300 hover:bg-gray-600">
                         <Eye className="h-3 w-3 mr-1" />
                         View Invoice

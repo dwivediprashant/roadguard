@@ -37,24 +37,43 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     if (user?.id) {
+      console.log('NotificationContext: Initializing for user', user.id, user.userType);
+      
       // Initialize socket connection
       const newSocket = io('http://localhost:3001');
       setSocket(newSocket);
 
       // Join user room
       newSocket.emit('join', user.id);
+      console.log('NotificationContext: Joined room for user', user.id);
 
       // Listen for new notifications
       newSocket.on('new_notification', (notification) => {
-        setNotifications(prev => [notification, ...prev]);
+        console.log('NotificationContext: Received notification', notification);
+        setNotifications(prev => {
+          const updated = [notification, ...prev];
+          console.log('NotificationContext: Updated notifications count', updated.length);
+          return updated;
+        });
         
         // Show toast notification for admins
         if (user.userType === 'admin') {
+          console.log('NotificationContext: Showing toast for admin');
           toast({
             title: notification.title,
             description: notification.message,
           });
         }
+      });
+      
+      // Listen for room join confirmation
+      newSocket.on('joined_room', (data) => {
+        console.log('NotificationContext: Joined room confirmation', data);
+      });
+      
+      // Listen for debug notifications
+      newSocket.on('debug_notification', (data) => {
+        console.log('NotificationContext: Debug notification', data);
       });
 
       // Fetch existing notifications
@@ -69,6 +88,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const fetchNotifications = async () => {
     if (!user?.id) return;
     
+    console.log('NotificationContext: Fetching notifications for user', user.id);
+    
     try {
       const response = await fetch(`http://localhost:3001/api/notifications/${user.id}`, {
         headers: {
@@ -76,9 +97,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       });
       
+      console.log('NotificationContext: Fetch response status', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('NotificationContext: Fetched notifications', data);
         setNotifications(data);
+      } else {
+        console.error('NotificationContext: Failed to fetch notifications', response.status);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);

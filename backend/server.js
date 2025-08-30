@@ -56,11 +56,20 @@ io.on('connection', (socket) => {
 
   socket.on('join', (userId) => {
     socket.join(`user_${userId}`);
-    console.log(`User ${userId} joined their room`);
+    console.log(`User ${userId} joined room user_${userId}`);
+    console.log('Socket rooms:', socket.rooms);
+    
+    // Send confirmation back to client
+    socket.emit('joined_room', { userId, room: `user_${userId}` });
   });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+  });
+  
+  // Debug listener
+  socket.on('debug_notification', (data) => {
+    console.log('Debug notification received:', data);
   });
 });
 

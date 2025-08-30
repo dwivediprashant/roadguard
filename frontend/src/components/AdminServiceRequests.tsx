@@ -46,7 +46,10 @@ const AdminServiceRequests = () => {
   const { user } = useAuth();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [onlineWorkers, setOnlineWorkers] = useState<string[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [requestToAssign, setRequestToAssign] = useState<ServiceRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -54,8 +57,25 @@ const AdminServiceRequests = () => {
     if (user?.id) {
       fetchServiceRequests();
       fetchWorkers();
+      fetchOnlineWorkers();
+      
+      // Poll for online workers every 30 seconds
+      const interval = setInterval(fetchOnlineWorkers, 30000);
+      return () => clearInterval(interval);
     }
   }, [user?.id]);
+
+  const fetchOnlineWorkers = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/workers/online');
+      if (response.ok) {
+        const data = await response.json();
+        setOnlineWorkers(data.onlineWorkers || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch online workers');
+    }
+  };
 
   const fetchServiceRequests = async () => {
     if (!user?.id) return;
@@ -87,19 +107,26 @@ const AdminServiceRequests = () => {
 
   const assignWorker = async (requestId: string, workerId: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/assign`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'worker-assigned', workerId })
+        body: JSON.stringify({ workerId, status: 'worker-assigned' })
       });
 
       if (response.ok) {
         toast({ title: "Success", description: "Worker assigned successfully!" });
         fetchServiceRequests();
+        setAssignDialogOpen(false);
+        setRequestToAssign(null);
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to assign worker", variant: "destructive" });
     }
+  };
+
+  const openAssignDialog = (request: ServiceRequest) => {
+    setRequestToAssign(request);
+    setAssignDialogOpen(true);
   };
 
   const updateRequestStatus = async (requestId: string, status: string) => {
@@ -229,18 +256,14 @@ const AdminServiceRequests = () => {
           </Dialog>
 
           {request.status === 'pending' && (
-            <Select onValueChange={(workerId) => assignWorker(request._id, workerId)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Assign Worker" />
-              </SelectTrigger>
-              <SelectContent>
-                {workers.map((worker) => (
-                  <SelectItem key={worker._id} value={worker._id}>
-                    {worker.firstName} {worker.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => openAssignDialog(request)}
+            >
+              <UserCheck className="h-4 w-4 mr-1" />
+              Assign Worker
+            </Button>
           )}
 
           {request.status !== 'completed' && (
@@ -294,6 +317,61 @@ const AdminServiceRequests = () => {
           </CardContent>
         </Card>
       )}
+      
+      {/* Worker Assignment Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Worker</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Request Details</h4>
+              <p className="text-sm text-muted-foreground">
+                {requestToAssign?.serviceName} - {requestToAssign?.userName}
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-3">Available Workers</h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {workers.filter(worker => onlineWorkers.includes(worker._id)).length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No workers are currently online
+                  </p>
+                ) : (
+                  workers
+                    .filter(worker => onlineWorkers.includes(worker._id))
+                    .map((worker) => (
+                      <div 
+                        key={worker._id} 
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                        onClick={() => assignWorker(requestToAssign?._id || '', worker._id)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 rounded-full bg-green-500" />
+                          <div>
+                            <p className="font-medium">{worker.firstName} {worker.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{worker.email}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-green-600 border-green-600">
+                          Online
+                        </Badge>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

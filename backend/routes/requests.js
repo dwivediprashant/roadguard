@@ -115,6 +115,55 @@ router.patch('/:requestId/status', async (req, res) => {
   }
 });
 
+// Assign worker to request
+router.patch('/:requestId/assign', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { workerId, status = 'worker-assigned' } = req.body;
+
+    const request = await Request.findByIdAndUpdate(
+      requestId,
+      { 
+        mechanicId: workerId,
+        status: status
+      },
+      { new: true }
+    ).populate('userId', 'firstName lastName email phone')
+     .populate('mechanicId', 'firstName lastName email phone');
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    // Create notification for worker
+    const notification = new Notification({
+      userId: workerId,
+      type: 'task_assigned',
+      title: 'New Task Assigned',
+      message: `You have been assigned a new task: ${request.message}`,
+      requestId: request._id
+    });
+    await notification.save();
+
+    // Emit real-time notification to worker
+    const io = req.app.get('io');
+    io.to(`user_${workerId}`).emit('new_notification', {
+      id: notification._id,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      requestId: request._id,
+      isRead: false,
+      createdAt: notification.createdAt
+    });
+
+    res.json({ message: 'Worker assigned successfully', request });
+  } catch (error) {
+    console.error('Error assigning worker:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Create service request (for UserDashboard)
 router.post('/service-requests', async (req, res) => {
   try {
@@ -168,6 +217,7 @@ router.post('/service-requests', async (req, res) => {
     console.log('Request saved successfully');
 
     // Create notification for admin
+    console.log('Creating notification for admin:', adminId);
     const notification = new Notification({
       userId: adminId,
       type: 'request_received',
@@ -176,16 +226,30 @@ router.post('/service-requests', async (req, res) => {
       requestId: request._id
     });
     await notification.save();
+    console.log('Notification saved:', notification._id);
 
     // Emit real-time notification to admin
     const io = req.app.get('io');
-    io.to(`user_${adminId}`).emit('new_notification', {
+    const notificationData = {
       id: notification._id,
       type: notification.type,
       title: notification.title,
       message: notification.message,
       requestId: request._id,
+      isRead: false,
       createdAt: notification.createdAt
+    };
+    
+    console.log('Emitting notification to room:', `user_${adminId}`);
+    console.log('Notification data:', notificationData);
+    
+    io.to(`user_${adminId}`).emit('new_notification', notificationData);
+    
+    // Also emit to all connected sockets for debugging
+    io.emit('debug_notification', {
+      adminId,
+      room: `user_${adminId}`,
+      notification: notificationData
     });
 
     // Populate the response with workshop name
