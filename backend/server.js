@@ -19,6 +19,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Disable request logging
+app.use((req, res, next) => {
+  next();
+});
+
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB Atlas'))
