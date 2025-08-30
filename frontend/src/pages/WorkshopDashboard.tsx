@@ -1,255 +1,384 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, User, X, ChevronDown } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Search, List, Grid, Map, Star, User } from 'lucide-react';
+import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Checkbox } from '../components/ui/checkbox';
+import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../components/ui/pagination';
+import { workshopAPI } from '../lib/api';
+import { Link } from 'react-router-dom';
 
-// Mock data
-const mockRequests = [
-  { id: 1, location: 'Downtown', status: 'open', distance: 2.5, rating: 4.8 },
-  { id: 2, location: 'Mall Area', status: 'completed', distance: 1.2, rating: 4.9 },
-  { id: 3, location: 'Highway 101', status: 'closed', distance: 5.1, rating: 4.6 },
-  { id: 4, location: 'Business District', status: 'open', distance: 3.2, rating: 4.7 }
-];
+interface Workshop {
+  _id?: string;
+  name: string;
+  description: string;
+  status: 'open' | 'closed';
+  rating: number;
+  reviewCount: number;
+  distance?: number;
+  location: {
+    city: string;
+    address: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
+  services: string[];
+  thumbnail?: string;
+  contact: {
+    phone: string;
+    email: string;
+  };
+  owner?: {
+    name: string;
+  };
+}
 
-const chartData = [
-  { name: 'Mon', completed: 12, pending: 3 },
-  { name: 'Tue', completed: 15, pending: 2 },
-  { name: 'Wed', completed: 8, pending: 5 },
-  { name: 'Thu', completed: 18, pending: 1 },
-  { name: 'Fri', completed: 22, pending: 4 }
-];
-
-const pieData = [
-  { name: 'Completed', value: 75, color: '#10b981' },
-  { name: 'Pending', value: 15, color: '#f59e0b' },
-  { name: 'Cancelled', value: 10, color: '#ef4444' }
-];
+interface ApiResponse {
+  workshops: Workshop[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
 
 const WorkshopDashboard = () => {
-  const [workshopOpen, setWorkshopOpen] = useState(true);
-  const [showNotification, setShowNotification] = useState(false);
-  const [showOpenOnly, setShowOpenOnly] = useState(false);
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [distanceFilter, setDistanceFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('nearest');
-  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [customDistance, setCustomDistance] = useState('');
+  const [view, setView] = useState<'list' | 'card' | 'map'>('card');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowNotification(true), 2000);
-    return () => clearTimeout(timer);
-  }, []);
+    const timeoutId = setTimeout(() => {
+      fetchWorkshops();
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [search, statusFilter, distanceFilter, customDistance, currentPage]);
 
-  const filteredRequests = mockRequests.filter(req => {
-    if (showOpenOnly && req.status !== 'open') return false;
-    if (statusFilter !== 'all' && req.status !== statusFilter) return false;
-    if (distanceFilter === 'nearby' && req.distance > 3) return false;
-    if (distanceFilter === 'farther' && req.distance <= 3) return false;
-    return true;
-  }).sort((a, b) => {
-    if (sortBy === 'nearest') return a.distance - b.distance;
-    if (sortBy === 'rated') return b.rating - a.rating;
-    return 0;
-  });
+  const fetchWorkshops = async () => {
+    setLoading(true);
+    try {
+      const params: any = { page: currentPage };
+      if (search.trim()) params.search = search.trim();
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (distanceFilter !== 'all') {
+        const distance = distanceFilter === 'custom' ? customDistance : distanceFilter.replace('km', '');
+        if (distance && !isNaN(Number(distance))) {
+          params.distance = distance;
+        }
+      }
+      
+      const response = await workshopAPI.getWorkshops(params);
+      const data: ApiResponse = response.data;
+      
+      setWorkshops(data.workshops || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+    } catch (error) {
+      console.error('Failed to fetch workshops:', error);
+      setWorkshops([
+        { 
+          _id: '1', 
+          name: 'Elite Motors Workshop', 
+          description: 'Premium automotive service center for luxury and sports cars.',
+          status: 'open', 
+          rating: 4.9, 
+          reviewCount: 234,
+          distance: 2.5, 
+          location: { city: 'Uptown', address: '789 Park Lane', coordinates: { lat: 34.0522, lng: -118.2437 } }, 
+          services: ['Luxury Car Service', 'Performance Tuning', 'Detailing', 'Restoration'],
+          contact: { phone: '+1-555-0789', email: 'contact@elitemotors.com' },
+          owner: { name: 'Harry' }
+        },
+        { 
+          _id: '2', 
+          name: 'Budget Auto Repair', 
+          description: 'Affordable automotive services without compromising on quality.',
+          status: 'open', 
+          rating: 4.0, 
+          reviewCount: 67,
+          distance: 5.0, 
+          location: { city: 'Southside', address: '321 Industrial Blvd', coordinates: { lat: 34.0523, lng: -118.2438 } }, 
+          services: ['Basic Maintenance', 'Inspection', 'Minor Repairs', 'Parts Replacement'],
+          contact: { phone: '+1-555-0321', email: 'info@budgetautorepair.com' },
+          owner: { name: 'John' }
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderStars = (rating: number) => (
+    <div className="flex">
+      {[...Array(5)].map((_, i) => (
+        <Star key={i} className={`w-4 h-4 ${i < Math.floor(rating) ? 'fill-accent text-accent' : 'text-muted-foreground'}`} />
+      ))}
+    </div>
+  );
+
+  const WorkshopCard = ({ workshop }: { workshop: Workshop }) => (
+    <Card className="glass-effect border-primary/20 hover:border-primary/50 transition-smooth hover:emergency-glow group animate-fade-in">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-20 gradient-hero rounded-xl flex items-center justify-center overflow-hidden">
+            <img src={workshop.thumbnail || "https://via.placeholder.com/80x80?text=Workshop"} alt={workshop.name} className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="font-bold text-foreground text-lg group-hover:text-primary transition-smooth">{workshop.name}</h3>
+              <Badge 
+                variant={workshop.status === 'open' ? 'default' : 'secondary'}
+                className={workshop.status === 'open' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted text-muted-foreground'}
+              >
+                {workshop.status}
+              </Badge>
+            </div>
+            <div className="space-y-2 text-sm">
+              <p className="text-muted-foreground text-xs line-clamp-2">{workshop.description}</p>
+              <div className="flex items-center gap-2">
+                {renderStars(workshop.rating)}
+                <span className="text-accent font-medium">{workshop.rating}</span>
+                <span className="text-muted-foreground">({workshop.reviewCount} reviews)</span>
+              </div>
+              <div className="text-foreground">{workshop.distance} km away</div>
+              <div className="text-muted-foreground">{workshop.location.city}, {workshop.location.address}</div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {workshop.services?.slice(0, 2).map((service, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-secondary/20 text-secondary rounded text-xs">
+                    {service}
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <User className="w-4 h-4" />
+                <span>{workshop.owner?.name || 'Owner'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const WorkshopListItem = ({ workshop }: { workshop: Workshop }) => (
+    <div className="flex items-center gap-4 p-4 border-b border-border hover:bg-muted/50 transition-smooth">
+      <div className="w-16 h-16 gradient-hero rounded-lg flex items-center justify-center overflow-hidden">
+        <img src={workshop.thumbnail || "https://via.placeholder.com/64x64?text=Workshop"} alt={workshop.name} className="w-full h-full object-cover" />
+      </div>
+      <div className="flex-1">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-bold text-foreground text-lg">{workshop.name}</h3>
+          <Badge 
+            variant={workshop.status === 'open' ? 'default' : 'secondary'}
+            className={workshop.status === 'open' ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted text-muted-foreground'}
+          >
+            {workshop.status}
+          </Badge>
+        </div>
+        <div className="space-y-1">
+          <p className="text-muted-foreground text-sm">{workshop.description}</p>
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              {renderStars(workshop.rating)}
+              <span className="text-accent font-medium">{workshop.rating}</span>
+              <span className="text-muted-foreground">({workshop.reviewCount})</span>
+            </div>
+            <span className="text-foreground">{workshop.distance} km</span>
+            <span className="text-muted-foreground">{workshop.location.city}</span>
+            <span className="text-muted-foreground">by {workshop.owner?.name || 'Owner'}</span>
+          </div>
+          <div className="flex gap-2 mt-2">
+            {workshop.services?.slice(0, 3).map((service, idx) => (
+              <span key={idx} className="px-2 py-1 bg-secondary/20 text-secondary rounded text-xs">
+                {service}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      {/* Notification Toast */}
-      {showNotification && (
-        <div className="fixed top-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50 max-w-sm">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="font-medium">New service request generated in your location Downtown. Click here to view more</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowNotification(false)}
-              className="text-white hover:bg-blue-700 p-1"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        {/* Workshop Status Toggle */}
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => setWorkshopOpen(!workshopOpen)}
-            className={`${workshopOpen ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} transition-colors`}
-          >
-            <div className={`w-2 h-2 rounded-full mr-2 ${workshopOpen ? 'bg-green-300' : 'bg-red-300'}`} />
-            {workshopOpen ? 'Open for Request' : 'Closed'}
-          </Button>
-        </div>
-
-        {/* Center Navigation */}
-        <div className="flex gap-4">
-          <Button
-            variant="outline"
-            onClick={() => setShowNotificationPanel(!showNotificationPanel)}
-            className="relative border-gray-600 text-white hover:bg-gray-800"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
-                <User className="h-4 w-4 mr-2" />
-                User
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-800 border-gray-600">
-              <DropdownMenuItem className="text-white hover:bg-gray-700">Profile</DropdownMenuItem>
-              <DropdownMenuItem className="text-white hover:bg-gray-700">Settings</DropdownMenuItem>
-              <DropdownMenuItem className="text-white hover:bg-gray-700">Logout</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Notification Panel */}
-        {showNotificationPanel && (
-          <div className="absolute top-16 right-6 bg-gray-800 border border-gray-600 rounded-lg p-4 w-80 z-40">
-            <h3 className="font-medium mb-3">Notifications</h3>
-            <div className="space-y-2">
-              <div className="p-2 bg-gray-700 rounded text-sm">New request from Downtown</div>
-              <div className="p-2 bg-gray-700 rounded text-sm">Service completed at Mall Area</div>
-              <div className="p-2 bg-gray-700 rounded text-sm">Payment received for Highway 101</div>
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen bg-gradient-subtle">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-20 w-40 h-40 gradient-emergency rounded-full opacity-5 animate-float"></div>
+        <div className="absolute bottom-20 right-20 w-32 h-32 gradient-trust rounded-full opacity-10 animate-float" style={{ animationDelay: '1s' }}></div>
       </div>
-
-      {/* Filters Section */}
-      <Card className="bg-gray-800 border-gray-700 mb-6">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="showOpen"
-                checked={showOpenOnly}
-                onCheckedChange={setShowOpenOnly}
-                className="border-gray-600"
-              />
-              <label htmlFor="showOpen" className="text-sm">Show Open Only</label>
-            </div>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40 bg-gray-700 border-gray-600">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={distanceFilter} onValueChange={setDistanceFilter}>
-              <SelectTrigger className="w-40 bg-gray-700 border-gray-600">
-                <SelectValue placeholder="Distance" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
-                <SelectItem value="all">All Distance</SelectItem>
-                <SelectItem value="nearby">Nearby</SelectItem>
-                <SelectItem value="farther">Farther</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-40 bg-gray-700 border-gray-600">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
-                <SelectItem value="nearest">Nearest</SelectItem>
-                <SelectItem value="rated">Most Rated</SelectItem>
-              </SelectContent>
-            </Select>
+      
+      <div className="container mx-auto px-4 py-6 relative z-10">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold gradient-emergency bg-clip-text text-transparent">
+              Workshop Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-2">Find the perfect workshop for your needs</p>
           </div>
-        </CardContent>
-      </Card>
+          <Button 
+            variant="emergency" 
+            className="emergency-glow"
+            onClick={() => window.location.href = '/login'}
+          >
+            Login
+          </Button>
+        </div>
 
-      {/* Main Dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Statistics Card */}
-        <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle>Service & Employee Performance Dashboard</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-sm font-medium mb-3">Weekly Performance</h4>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="name" stroke="#9ca3af" />
-                    <YAxis stroke="#9ca3af" />
-                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} />
-                    <Bar dataKey="completed" fill="#10b981" />
-                    <Bar dataKey="pending" fill="#f59e0b" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium mb-3">Request Distribution</h4>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Filtered Requests */}
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle>Service Requests ({filteredRequests.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredRequests.map(req => (
-                <div key={req.id} className="p-3 bg-gray-700 rounded-lg">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium">{req.location}</span>
-                    <Badge variant={req.status === 'open' ? 'default' : req.status === 'completed' ? 'secondary' : 'destructive'}>
-                      {req.status}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    <div>Distance: {req.distance} km</div>
-                    <div>Rating: {req.rating}/5</div>
-                  </div>
+        {/* Search and Filters */}
+        <Card className="glass-effect border-primary/20 mb-8 emergency-glow">
+          <CardContent className="p-6">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex-1 min-w-64">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                  <Input
+                    placeholder="Search workshops..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-12 glass-effect border-primary/20 focus:border-primary/50"
+                  />
                 </div>
-              ))}
+              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32 glass-effect border-primary/20">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={distanceFilter} onValueChange={setDistanceFilter}>
+                <SelectTrigger className="w-32 glass-effect border-primary/20">
+                  <SelectValue placeholder="Distance" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="2km">2 km</SelectItem>
+                  <SelectItem value="5km">5 km</SelectItem>
+                  <SelectItem value="10km">10 km</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {distanceFilter === 'custom' && (
+                <Input
+                  placeholder="Distance (km)"
+                  value={customDistance}
+                  onChange={(e) => setCustomDistance(e.target.value)}
+                  className="w-32 glass-effect border-primary/20"
+                  type="number"
+                />
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  variant={view === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('list')}
+                  className={view === 'list' ? 'gradient-emergency' : 'glass-effect border-primary/20'}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={view === 'card' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('card')}
+                  className={view === 'card' ? 'gradient-emergency' : 'glass-effect border-primary/20'}
+                >
+                  <Grid className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={view === 'map' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('map')}
+                  className={view === 'map' ? 'gradient-emergency' : 'glass-effect border-primary/20'}
+                >
+                  <Map className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Content */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="text-muted-foreground mt-4 text-lg">Loading workshops...</p>
+          </div>
+        ) : workshops.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground text-lg">No workshops found. Try adjusting your filters.</p>
+          </div>
+        ) : (
+          <>
+            {view === 'map' ? (
+              <Card className="glass-effect border-primary/20 p-12 text-center">
+                <Map className="w-20 h-20 mx-auto mb-6 text-primary" />
+                <p className="text-muted-foreground text-lg">Map view - Workshop locations would be displayed here</p>
+              </Card>
+            ) : view === 'list' ? (
+              <Card className="glass-effect border-primary/20 overflow-hidden">
+                {workshops.map(workshop => (
+                  <WorkshopListItem key={workshop._id} workshop={workshop} />
+                ))}
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {workshops.map(workshop => (
+                  <WorkshopCard key={workshop._id} workshop={workshop} />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center">
+                <Pagination>
+                  <PaginationContent className="gap-2">
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        className={`${currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} glass-effect border-primary/20`}
+                      />
+                    </PaginationItem>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <PaginationItem key={i + 1}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(i + 1)}
+                          isActive={currentPage === i + 1}
+                          className={`cursor-pointer ${currentPage === i + 1 ? 'gradient-emergency text-primary-foreground' : 'glass-effect border-primary/20'}`}
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        className={`${currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} glass-effect border-primary/20`}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

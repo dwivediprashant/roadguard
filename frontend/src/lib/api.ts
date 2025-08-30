@@ -41,6 +41,9 @@ export const authAPI = {
   workerLogin: (credentials: any) => api.post('/auth/worker-login', credentials),
   userLogin: (credentials: any) => api.post('/auth/user-login', credentials),
   getCurrentUser: () => api.get('/auth/me'),
+  updateProfile: (profileData: any) => api.put('/auth/profile', profileData),
+  getAllUsers: () => api.get('/auth/users'),
+  updateUserRole: (userId: string, userType: string) => api.put(`/auth/users/${userId}/role`, { userType }),
 };
 
 export const workerAPI = {
@@ -57,6 +60,11 @@ export const requestAPI = {
   getAll: () => api.get('/requests'),
   create: (requestData: any) => api.post('/requests', requestData),
   update: (id: string, requestData: any) => api.put(`/requests/${id}`, requestData),
+};
+
+export const workshopAPI = {
+  getWorkshops: (params?: any) => api.get('/workshops', { params }),
+  getWorkshop: (id: string) => api.get(`/workshops/${id}`),
 };
 
 export default api;

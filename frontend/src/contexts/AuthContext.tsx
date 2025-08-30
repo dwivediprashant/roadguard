@@ -8,6 +8,17 @@ interface User {
   email: string;
   phone: string;
   userType: 'user' | 'worker' | 'admin';
+  currentEmployer?: string;
+  language?: string;
+  profileImage?: string;
+  workHistory?: Array<{
+    position: string;
+    company: string;
+    startDate: string;
+    endDate: string;
+    description: string;
+    isCurrent: boolean;
+  }>;
 }
 
 interface AuthContextType {
@@ -16,6 +27,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
   logout: () => void;
+  updateUser: (userData: User) => void;
   isLoading: boolean;
 }
 
@@ -89,12 +101,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('user');
   };
 
+  const updateUser = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
   const value = {
     user,
     token,
     login,
     register,
     logout,
+    updateUser,
     isLoading,
   };
 
