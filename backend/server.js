@@ -88,7 +88,7 @@ app.get('/api/init', async (req, res) => {
   }
 });
 
-app.get('/api/requests', authenticateUser, async (req, res) => {
+app.get('/api/requests', authenticate, async (req, res) => {
   try {
     const requests = await Request.find().sort({ createdAt: -1 });
     res.json(requests);
@@ -97,7 +97,7 @@ app.get('/api/requests', authenticateUser, async (req, res) => {
   }
 });
 
-app.post('/api/requests', authenticateUser, async (req, res) => {
+app.post('/api/requests', authenticate, async (req, res) => {
   try {
     const request = new Request({ ...req.body, userId: req.user._id });
     await request.save();
@@ -107,7 +107,7 @@ app.post('/api/requests', authenticateUser, async (req, res) => {
   }
 });
 
-app.put('/api/requests/:id', authenticateUser, async (req, res) => {
+app.put('/api/requests/:id', authenticate, async (req, res) => {
   try {
     const request = await Request.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(request);

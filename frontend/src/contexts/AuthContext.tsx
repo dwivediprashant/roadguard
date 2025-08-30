@@ -7,7 +7,7 @@ interface User {
   lastName: string;
   email: string;
   phone: string;
-  userType: 'user' | 'worker';
+  userType: 'user' | 'worker' | 'admin';
 }
 
 interface AuthContextType {
@@ -39,23 +39,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
 
-      if (storedToken && storedUser) {
-        try {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        } catch (error) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
+    if (storedToken && storedUser) {
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
-      setIsLoading(false);
-    };
-    
-    initAuth();
+    }
+    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {

@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema({
   },
   userType: {
     type: String,
-    enum: ['user', 'worker'],
+    enum: ['user', 'worker', 'admin'],
     required: true
   },
   isActive: {
