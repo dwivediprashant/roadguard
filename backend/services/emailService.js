@@ -1,72 +1,107 @@
-import nodemailer from 'nodemailer';
+import mjml from 'mjml';
+import { Resend } from 'resend';
 
-// Using Ethereal Email for testing (creates test accounts automatically)
-let transporter;
+export const generatePasswordResetEmail = (resetLink, userName) => {
+  const mjmlTemplate = `
+    <mjml>
+      <mj-head>
+        <mj-title>Password Reset Request</mj-title>
+        <mj-attributes>
+          <mj-all font-family="Arial, sans-serif" />
+        </mj-attributes>
+      </mj-head>
+      <mj-body background-color="#f4f4f4">
+        <mj-section background-color="#ffffff" padding="40px">
+          <mj-column>
+            <mj-image 
+              width="120px" 
+              src="https://via.placeholder.com/120x60/007bff/ffffff?text=RoadGuard"
+              alt="RoadGuard Logo"
+            />
+            <mj-divider border-color="#e0e0e0" />
+            <mj-text font-size="24px" color="#333333" font-weight="bold" align="center">
+              Password Reset Request
+            </mj-text>
+            <mj-text font-size="16px" color="#666666" line-height="24px">
+              Hello ${userName},
+            </mj-text>
+            <mj-text font-size="16px" color="#666666" line-height="24px">
+              We received a request to reset your password for your RoadGuard account. 
+              Click the button below to reset your password.
+            </mj-text>
+            <mj-button 
+              background-color="#007bff" 
+              color="#ffffff" 
+              font-size="16px" 
+              font-weight="bold"
+              href="${resetLink}"
+              padding="15px 30px"
+              border-radius="5px"
+            >
+              Reset Password
+            </mj-button>
+            <mj-text font-size="14px" color="#999999" line-height="20px">
+              This link will expire in 15 minutes for your security.
+            </mj-text>
+            <mj-text font-size="14px" color="#999999" line-height="20px">
+              If the button doesn't work, copy and paste this link into your browser:
+            </mj-text>
+            <mj-text font-size="12px" color="#007bff" word-break="break-all">
+              ${resetLink}
+            </mj-text>
+            <mj-divider border-color="#e0e0e0" />
+            <mj-text font-size="12px" color="#999999" align="center">
+              If you didn't request this password reset, please ignore this email. 
+              Your password will remain unchanged.
+            </mj-text>
+            <mj-text font-size="12px" color="#999999" align="center">
+              © 2024 RoadGuard. All rights reserved.
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-body>
+    </mjml>
+  `;
 
-const createTransporter = async () => {
-  if (!transporter) {
-    // Create test account for demo
-    const testAccount = await nodemailer.createTestAccount();
-    
-    transporter = nodemailer.createTransporter({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-  }
-  return transporter;
+  const { html } = mjml(mjmlTemplate);
+  return html;
 };
 
-export const sendOTPEmail = async (email, otp, firstName) => {
-  const transporter = await createTransporter();
-  
-  const mailOptions = {
-    from: '"RoadGuard Service" <noreply@roadguard.com>',
-    to: email,
-    subject: 'RoadGuard - Password Reset OTP',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #007bff; margin: 0;">🚗 RoadGuard</h1>
-          <p style="color: #666; margin: 5px 0;">Your trusted roadside assistance</p>
-        </div>
-        
-        <h2 style="color: #333; margin-bottom: 20px;">Password Reset Request</h2>
-        <p style="font-size: 16px; line-height: 1.5;">Hello ${firstName},</p>
-        <p style="font-size: 16px; line-height: 1.5;">You requested a password reset for your RoadGuard account.</p>
-        
-        <div style="background: linear-gradient(135deg, #007bff, #0056b3); padding: 30px; text-align: center; margin: 30px 0; border-radius: 10px; color: white;">
-          <h3 style="margin: 0 0 15px 0; font-size: 18px;">Your OTP Code</h3>
-          <div style="background: white; color: #333; padding: 15px; border-radius: 8px; display: inline-block; min-width: 200px;">
-            <h1 style="margin: 0; font-size: 32px; letter-spacing: 8px; font-weight: bold;">${otp}</h1>
-          </div>
-        </div>
-        
-        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p style="margin: 0; color: #856404;">⏰ This OTP will expire in <strong>10 minutes</strong></p>
-        </div>
-        
-        <p style="font-size: 14px; color: #666; line-height: 1.5;">If you didn't request this password reset, please ignore this email. Your account remains secure.</p>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-        <div style="text-align: center;">
-          <p style="color: #999; font-size: 12px; margin: 0;">© 2024 RoadGuard Services. All rights reserved.</p>
-          <p style="color: #999; font-size: 12px; margin: 5px 0 0 0;">This is an automated message, please do not reply.</p>
-        </div>
-      </div>
-    `
-  };
-
+export const sendPasswordResetEmail = async (email, resetLink, userName) => {
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully!');
-    console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
-    return true;
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    
+    let htmlContent;
+    try {
+      htmlContent = generatePasswordResetEmail(resetLink, userName);
+    } catch (mjmlError) {
+      console.error('MJML error, using fallback HTML:', mjmlError);
+      // Fallback HTML if MJML fails
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>Hello ${userName},</p>
+          <p>We received a request to reset your password for your RoadGuard account.</p>
+          <p>Click the button below to reset your password:</p>
+          <a href="${resetLink}" style="display: inline-block; background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Reset Password</a>
+          <p>This link will expire in 15 minutes for your security.</p>
+          <p>If you didn't request this password reset, please ignore this email.</p>
+          <hr style="margin: 30px 0;">
+          <p style="color: #666; font-size: 12px;">© 2024 RoadGuard. All rights reserved.</p>
+        </div>
+      `;
+    }
+    
+    const result = await resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: [email],
+      subject: 'Password Reset Request - RoadGuard',
+      html: htmlContent
+    });
+
+    return result;
   } catch (error) {
-    throw new Error('Failed to send email');
+    console.error('Email sending error:', error);
+    throw error;
   }
 };
