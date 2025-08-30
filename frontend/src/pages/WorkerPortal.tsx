@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
-  Bell, 
   Settings, 
   Search, 
   Calendar, 
@@ -23,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { TaskKanban } from '@/components/TaskKanban';
 import { TaskCalendar } from '@/components/TaskCalendar';
+import NotificationBell from '@/components/NotificationBell';
 
 interface Task {
   _id: string;
@@ -241,14 +241,7 @@ export default function WorkerPortal() {
             </div>
             
             <div className="flex items-center gap-4">
-              <Button variant="outline" size="icon" className="relative">
-                <Bell className="h-4 w-4" />
-                {notifications > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs">
-                    {notifications}
-                  </Badge>
-                )}
-              </Button>
+              <NotificationBell />
               <Button variant="outline" size="icon">
                 <Settings className="h-4 w-4" />
               </Button>

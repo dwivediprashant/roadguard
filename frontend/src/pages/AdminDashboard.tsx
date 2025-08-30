@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { Bell, User, X, ChevronDown, Store } from "lucide-react";
 import ShopWorkers from "@/components/ShopWorkers";
+import NotificationTest from "@/components/NotificationTest";
 
 export default function AdminDashboard() {
   const [workshopOpen, setWorkshopOpen] = useState(true);
@@ -160,6 +161,11 @@ export default function AdminDashboard() {
                 <p className="text-lg text-muted-foreground leading-relaxed">
                   Dashboard to display the statistics of completed service & employee performance
                 </p>
+              </div>
+              
+              {/* Notification Test */}
+              <div className="mb-8">
+                <NotificationTest />
               </div>
               
               {/* Statistics Placeholder */}
