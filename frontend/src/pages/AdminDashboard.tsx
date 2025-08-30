@@ -6,11 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { requestAPI } from "@/lib/api";
-<<<<<<< HEAD
-import { Bell, ArrowLeft } from "lucide-react";
-=======
-import { Bell, Users, Car, Settings, LogOut, TrendingUp, AlertTriangle } from "lucide-react";
->>>>>>> 8474b20f283bf63e9dbd24b41c24fd67d38065ec
+import { Bell, ArrowLeft, Users, Car, LogOut, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface Request {
   _id: string;
@@ -21,8 +17,6 @@ interface Request {
   assignedWorker?: string;
   createdAt: string;
 }
-
-const mockWorkers = ["Mike Johnson", "Sarah Davis", "Tom Brown", "Lisa Garcia"];
 
 export default function AdminDashboard() {
   const [requests, setRequests] = useState<Request[]>([]);
@@ -43,7 +37,6 @@ export default function AdminDashboard() {
     } catch (error: any) {
       console.error('Error fetching requests:', error);
       
-      // Show a more user-friendly error message
       const errorMessage = error.response?.data?.message || 
                           error.message || 
                           "Failed to fetch requests. Please check your connection and try again.";
@@ -54,7 +47,6 @@ export default function AdminDashboard() {
         variant: "destructive"
       });
       
-      // Set empty array to show "no requests" state
       setRequests([]);
     } finally {
       setIsLoading(false);
@@ -103,31 +95,19 @@ export default function AdminDashboard() {
   const completedRequests = requests.filter(r => r.status === 'completed').length;
 
   return (
-<<<<<<< HEAD
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => window.location.href = '/'}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        </div>
-        <Button 
-          onClick={() => toast({ title: "Notifications", description: "3 new service requests pending" })}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Bell className="h-4 w-4 mr-2" />
-          Notifications
-        </Button>
-=======
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
         <div className="container mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Dashboard</h1>
-              <p className="text-slate-600 dark:text-slate-400">Welcome back, {user?.firstName} {user?.lastName}</p>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => window.location.href = '/'}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Dashboard</h1>
+                <p className="text-slate-600 dark:text-slate-400">Welcome back, {user?.firstName} {user?.lastName}</p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <Button 
@@ -148,7 +128,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
->>>>>>> 8474b20f283bf63e9dbd24b41c24fd67d38065ec
       </div>
 
       <div className="container mx-auto px-6 py-8">
@@ -240,18 +219,11 @@ export default function AdminDashboard() {
                               <SelectValue placeholder="Select worker" />
                             </SelectTrigger>
                             <SelectContent>
-                              {mockWorkers.map(worker => (
-                                <SelectItem key={worker} value={worker}>{worker}</SelectItem>
-                              ))}
+                              <SelectItem value="worker1">Available Worker 1</SelectItem>
+                              <SelectItem value="worker2">Available Worker 2</SelectItem>
+                              <SelectItem value="worker3">Available Worker 3</SelectItem>
                             </SelectContent>
                           </Select>
-                          <Button 
-                            onClick={() => assignWorker(request._id, mockWorkers[0])}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Assign
-                          </Button>
                         </div>
                       )}
                       
