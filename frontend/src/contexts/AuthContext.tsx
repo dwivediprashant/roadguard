@@ -39,41 +39,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-
-<<<<<<< HEAD
-
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
 
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
     setIsLoading(false);
-=======
-      if (storedToken && storedUser) {
-        try {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        } catch (error) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
-      }
-      setIsLoading(false);
-    };
-    
-    initAuth();
->>>>>>> 2d4a907322722fc133d75ffbb28203b315569973
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await authAPI.login({ email, password });
       const { token: newToken, user: userData } = response.data;
-
-
 
       setToken(newToken);
       setUser(userData);

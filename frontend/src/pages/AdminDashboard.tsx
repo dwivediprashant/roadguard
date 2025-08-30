@@ -38,11 +38,19 @@ export default function AdminDashboard() {
       setRequests(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Error fetching requests:', error);
+      
+      // Show a more user-friendly error message
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          "Failed to fetch requests. Please check your connection and try again.";
+      
       toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to fetch requests. Please try again.",
+        title: "Connection Error",
+        description: errorMessage,
         variant: "destructive"
       });
+      
+      // Set empty array to show "no requests" state
       setRequests([]);
     } finally {
       setIsLoading(false);
@@ -176,7 +184,14 @@ export default function AdminDashboard() {
               </div>
             ) : requests.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No requests found.</p>
+                <p className="text-muted-foreground mb-4">No requests found.</p>
+                <Button 
+                  onClick={fetchRequests}
+                  variant="outline"
+                  size="sm"
+                >
+                  Refresh Requests
+                </Button>
               </div>
             ) : (
               <div className="space-y-4">
