@@ -64,54 +64,74 @@ export default function WorkerPortal() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
-  const [notifications, setNotifications] = useState(3);
+  const [notifications, setNotifications] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [workerProfile, setWorkerProfile] = useState<any>(null);
 
-  // Mock data - replace with API calls
+  // Fetch real tasks and worker profile from API
   useEffect(() => {
-    const mockTasks: Task[] = [
-      {
-        _id: '1',
-        title: 'Emergency Battery Jump',
-        clientName: 'John Doe',
-        serviceType: 'Battery Jump',
-        category: 'Emergency',
-        location: { address: 'Main St & 5th Ave, Downtown' },
-        scheduledTime: '2024-01-15T10:00:00Z',
-        status: 'assigned',
-        priority: 'high',
-        distance: 2.5,
-        upvotes: 12
-      },
-      {
-        _id: '2',
-        title: 'Tire Replacement Service',
-        clientName: 'Jane Smith',
-        serviceType: 'Tire Change',
-        category: 'Maintenance',
-        location: { address: 'Oak Rd & Pine St, Suburbs' },
-        scheduledTime: '2024-01-15T14:00:00Z',
-        status: 'start_service',
-        priority: 'medium',
-        distance: 5.2,
-        upvotes: 8
-      },
-      {
-        _id: '3',
-        title: 'Fuel Delivery',
-        clientName: 'Bob Wilson',
-        serviceType: 'Fuel Delivery',
-        category: 'Delivery',
-        location: { address: 'Highway 101, Mile Marker 45' },
-        scheduledTime: '2024-01-15T16:30:00Z',
-        status: 'reached',
-        priority: 'low',
-        distance: 8.1,
-        upvotes: 15
-      }
-    ];
-    setTasks(mockTasks);
-    setFilteredTasks(mockTasks);
+    fetchTasks();
+    fetchWorkerProfile();
   }, []);
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:3001/api/worker/tasks', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data.tasks || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWorkerProfile = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/worker/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setWorkerProfile(data);
+        setAvailability(data.availability || 'available');
+        setNotifications(data.notifications?.filter((n: any) => !n.read).length || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch worker profile:', error);
+    }
+  };
+
+  const updateAvailability = async (newAvailability: string) => {
+    try {
+      const response = await fetch('http://localhost:3001/api/worker/availability', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ availability: newAvailability })
+      });
+      
+      if (response.ok) {
+        setAvailability(newAvailability);
+      }
+    } catch (error) {
+      console.error('Failed to update availability:', error);
+    }
+  };
 
   // Filter and sort tasks
   useEffect(() => {
@@ -207,7 +227,7 @@ export default function WorkerPortal() {
               <h1 className="text-2xl font-bold">Worker Portal</h1>
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${getAvailabilityColor()}`}></div>
-                <Select value={availability} onValueChange={setAvailability}>
+                <Select value={availability} onValueChange={updateAvailability}>
                   <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
@@ -233,7 +253,9 @@ export default function WorkerPortal() {
                 <Settings className="h-4 w-4" />
               </Button>
               <Avatar>
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarFallback>
+                  {workerProfile?.userId?.firstName?.[0]}{workerProfile?.userId?.lastName?.[0] || 'W'}
+                </AvatarFallback>
               </Avatar>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../components/ui/pagination';
 import { workshopAPI } from '../lib/api';
 import { Link } from 'react-router-dom';
+import GoogleMap from '../components/Map';
 
 interface Workshop {
   _id?: string;
@@ -85,34 +86,7 @@ const WorkshopDashboard = () => {
       setTotalPages(data.pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch workshops:', error);
-      setWorkshops([
-        { 
-          _id: '1', 
-          name: 'Elite Motors Workshop', 
-          description: 'Premium automotive service center for luxury and sports cars.',
-          status: 'open', 
-          rating: 4.9, 
-          reviewCount: 234,
-          distance: 2.5, 
-          location: { city: 'Uptown', address: '789 Park Lane', coordinates: { lat: 34.0522, lng: -118.2437 } }, 
-          services: ['Luxury Car Service', 'Performance Tuning', 'Detailing', 'Restoration'],
-          contact: { phone: '+1-555-0789', email: 'contact@elitemotors.com' },
-          owner: { name: 'Harry' }
-        },
-        { 
-          _id: '2', 
-          name: 'Budget Auto Repair', 
-          description: 'Affordable automotive services without compromising on quality.',
-          status: 'open', 
-          rating: 4.0, 
-          reviewCount: 67,
-          distance: 5.0, 
-          location: { city: 'Southside', address: '321 Industrial Blvd', coordinates: { lat: 34.0523, lng: -118.2438 } }, 
-          services: ['Basic Maintenance', 'Inspection', 'Minor Repairs', 'Parts Replacement'],
-          contact: { phone: '+1-555-0321', email: 'info@budgetautorepair.com' },
-          owner: { name: 'John' }
-        }
-      ]);
+      setWorkshops([]);
     } finally {
       setLoading(false);
     }
@@ -327,9 +301,13 @@ const WorkshopDashboard = () => {
         ) : (
           <>
             {view === 'map' ? (
-              <Card className="glass-effect border-primary/20 p-12 text-center">
-                <Map className="w-20 h-20 mx-auto mb-6 text-primary" />
-                <p className="text-muted-foreground text-lg">Map view - Workshop locations would be displayed here</p>
+              <Card className="glass-effect border-primary/20 overflow-hidden">
+                <GoogleMap 
+                  center={{ lat: 40.7128, lng: -74.0060 }}
+                  zoom={12}
+                  height="500px"
+                  showUserLocation={true}
+                />
               </Card>
             ) : view === 'list' ? (
               <Card className="glass-effect border-primary/20 overflow-hidden">

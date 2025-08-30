@@ -42,14 +42,14 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-<<<<<<< HEAD
+// <<<<<<< HEAD
   resetPasswordOTP: {
     type: String
   },
   resetPasswordExpiry: {
     type: Date
   }
-=======
+,
   // Profile fields
   currentEmployer: {
     type: String,
@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema({
     description: String,
     isCurrent: { type: Boolean, default: false }
   }]
->>>>>>> c3661885db5e7a3117ee81339ce2e0c53f7961f7
+
 }, {
   timestamps: true
 });

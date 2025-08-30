@@ -41,15 +41,11 @@ export const authAPI = {
   workerLogin: (credentials: any) => api.post('/auth/worker-login', credentials),
   userLogin: (credentials: any) => api.post('/auth/user-login', credentials),
   getCurrentUser: () => api.get('/auth/me'),
-<<<<<<< HEAD
-  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
-  verifyOTP: (email: string, otp: string) => api.post('/auth/verify-otp', { email, otp }),
-  resetPassword: (email: string, otp: string, newPassword: string) => api.post('/auth/reset-password', { email, otp, newPassword }),
-=======
   updateProfile: (profileData: any) => api.put('/auth/profile', profileData),
-  getAllUsers: () => api.get('/auth/users'),
-  updateUserRole: (userId: string, userType: string) => api.put(`/auth/users/${userId}/role`, { userType }),
->>>>>>> c3661885db5e7a3117ee81339ce2e0c53f7961f7
+};
+
+export const adminAPI = {
+  getWorkers: () => api.get('/admin/workers'),
 };
 
 export const workerAPI = {
@@ -71,6 +67,9 @@ export const requestAPI = {
 export const workshopAPI = {
   getWorkshops: (params?: any) => api.get('/workshops', { params }),
   getWorkshop: (id: string) => api.get(`/workshops/${id}`),
+  createWorkshop: (workshopData: any) => api.post('/workshops', workshopData),
+  updateWorkshop: (id: string, workshopData: any) => api.put(`/workshops/${id}`, workshopData),
+  deleteWorkshop: (id: string) => api.delete(`/workshops/${id}`),
 };
 
 export default api;
