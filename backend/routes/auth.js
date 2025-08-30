@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Worker from '../models/Worker.js';
 import Shop from '../models/Shop.js';
+import { sendOTPEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -305,6 +306,66 @@ router.get('/shop/:shopId/workers', async (req, res) => {
       shopName: shop.shopName,
       workers
     });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Set OTP and expiry (10 minutes)
+    user.resetPasswordOTP = otp;
+    user.resetPasswordExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    // Send OTP via email
+    const emailSent = await sendOTPEmail(email, otp, user.firstName);
+    
+    if (!emailSent) {
+      return res.status(500).json({ message: 'Failed to send email. Please try again.' });
+    }
+
+    res.json({
+      message: 'Password reset OTP sent to your email address'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Reset Password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    const user = await User.findOne({ 
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordExpiry: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    // Update password
+    user.password = newPassword;
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordExpiry = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
