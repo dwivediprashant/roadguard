@@ -19,12 +19,14 @@ router.post('/register', [
   body('email').isEmail().withMessage('Valid email is required'),
   body('phone').notEmpty().withMessage('Phone number is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('userType').isIn(['driver', 'mechanic']).withMessage('Invalid user type')
+  body('userType').isIn(['user', 'worker']).withMessage('Invalid user type')
 ], async (req, res) => {
   try {
+    console.log('Registration request body:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array() });
     }
 
     const { firstName, lastName, email, phone, password, userType, subscribeNewsletter } = req.body;
@@ -61,6 +63,7 @@ router.post('/register', [
       }
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ error: error.message });
   }
 });
