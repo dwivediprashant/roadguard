@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { User, LogOut, Home, Shield } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 
 export const DashboardNav = () => {
   const { user, logout } = useAuth();
@@ -43,6 +44,7 @@ export const DashboardNav = () => {
       </div>
       
       <div className="flex items-center space-x-4">
+        {user?.userType === 'worker' && <NotificationBell />}
         <div className="flex items-center space-x-3">
           <Avatar className="w-8 h-8">
             <AvatarImage src={user?.profileImage} alt="Profile" />

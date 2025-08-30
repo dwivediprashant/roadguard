@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+<<<<<<< HEAD
 import { useToast } from "@/hooks/use-toast";
 import AdminServiceRequests from "@/components/AdminServiceRequests";
 import { 
@@ -17,6 +18,11 @@ import {
   BarChart3, TrendingUp, RefreshCw, Upload, Globe, ChevronDown,
   Shield, Crown, Settings2, UserCheck, History, Network
 } from "lucide-react";
+=======
+import { Bell, User, X, ChevronDown, Store } from "lucide-react";
+import ShopWorkers from "@/components/ShopWorkers";
+import NotificationTest from "@/components/NotificationTest";
+>>>>>>> 732e1ec886e986c91dcdef1ce21b358df9885205
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -347,6 +353,7 @@ const AdminDashboard = () => {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold">User Management</h2>
               
+<<<<<<< HEAD
               <div className="grid gap-4">
                 {users.length === 0 ? (
                   <Card className="bg-gray-800 border-gray-700">
@@ -414,6 +421,33 @@ const AdminDashboard = () => {
                     </Card>
                   ))
                 )}
+=======
+              <div className="bg-muted/50 border-2 border-dashed border-primary/30 rounded-lg p-8">
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  Dashboard to display the statistics of completed service & employee performance
+                </p>
+              </div>
+              
+              {/* Notification Test */}
+              <div className="mb-8">
+                <NotificationTest />
+              </div>
+              
+              {/* Statistics Placeholder */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                <div className="glass-effect border-primary/20 rounded-lg p-4 emergency-glow">
+                  <h3 className="font-semibold text-primary">Completed Services</h3>
+                  <p className="text-2xl font-bold text-foreground">24</p>
+                </div>
+                <div className="glass-effect border-primary/20 rounded-lg p-4 trust-glow">
+                  <h3 className="font-semibold text-secondary">Shop Workers</h3>
+                  <p className="text-2xl font-bold text-foreground">-</p>
+                </div>
+                <div className="glass-effect border-primary/20 rounded-lg p-4">
+                  <h3 className="font-semibold text-accent">Pending Requests</h3>
+                  <p className="text-2xl font-bold text-foreground">5</p>
+                </div>
+>>>>>>> 732e1ec886e986c91dcdef1ce21b358df9885205
               </div>
             </div>
           )}
