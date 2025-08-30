@@ -23,7 +23,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Redirect based on current path
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/worker')) {
+        window.location.href = '/worker-login';
+      } else {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -32,7 +38,19 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (userData: any) => api.post('/auth/register', userData),
   login: (credentials: any) => api.post('/auth/login', credentials),
+  workerLogin: (credentials: any) => api.post('/auth/worker-login', credentials),
+  userLogin: (credentials: any) => api.post('/auth/user-login', credentials),
   getCurrentUser: () => api.get('/auth/me'),
+};
+
+export const workerAPI = {
+  getProfile: () => api.get('/worker/profile'),
+  updateAvailability: (availability: string) => api.put('/worker/availability', { availability }),
+  getTasks: (params?: any) => api.get('/worker/tasks', { params }),
+  getTask: (id: string) => api.get(`/worker/tasks/${id}`),
+  updateTaskStatus: (id: string, status: string) => api.put(`/worker/tasks/${id}/status`, { status }),
+  addTaskNote: (id: string, message: string) => api.post(`/worker/tasks/${id}/notes`, { message }),
+  updateLiveLocation: (id: string, lat: number, lng: number) => api.put(`/worker/tasks/${id}/location`, { lat, lng }),
 };
 
 export const requestAPI = {
