@@ -17,7 +17,8 @@ import {
   MapPin, 
   User,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  ArrowLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TaskKanban } from '@/components/TaskKanban';
@@ -200,6 +201,9 @@ export default function WorkerPortal() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <h1 className="text-2xl font-bold">Worker Portal</h1>
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${getAvailabilityColor()}`}></div>
