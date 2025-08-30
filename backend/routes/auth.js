@@ -1,37 +1,103 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+<<<<<<< HEAD
 import { body, validationResult } from 'express-validator';
+import crypto from 'crypto';
 import User from '../models/User.js';
+import PasswordResetToken from '../models/PasswordResetToken.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 import { authenticate } from '../middleware/auth.js';
+=======
+import User from '../models/User.js';
+import Worker from '../models/Worker.js';
+import Shop from '../models/Shop.js';
+import { sendOTPEmail } from '../services/emailService.js';
+>>>>>>> 273ef487d9fc6a81a5a2a2a4f9ab875e7fcce14d
 
 const router = express.Router();
 
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN
-  });
+// Generate Shop ID
+const generateShopId = () => {
+  return 'SH' + Math.random().toString(36).substr(2, 6).toUpperCase();
 };
 
-// Register
-router.post('/register', [
-  body('firstName').trim().notEmpty().withMessage('First name is required'),
-  body('lastName').trim().notEmpty().withMessage('Last name is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').notEmpty().withMessage('Phone number is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('userType').isIn(['user', 'worker', 'admin']).withMessage('Invalid user type')
-], async (req, res) => {
+// Admin Signup
+router.post('/admin-signup', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array() });
+    const { firstName, lastName, phone, shopName, email, password } = req.body;
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
     }
 
-    const { firstName, lastName, email, phone, password, userType, subscribeNewsletter } = req.body;
+    // Generate unique shop ID
+    let shopId;
+    let shopExists;
+    do {
+      shopId = generateShopId();
+      shopExists = await Shop.findOne({ shopId });
+    } while (shopExists);
+
+    // Create admin user
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      userType: 'admin',
+      shopName
+    });
+
+    await user.save();
+
+    // Create shop
+    const shop = new Shop({
+      shopId,
+      shopName,
+      adminId: user._id,
+      phone
+    });
+
+    await shop.save();
+
+    // Generate token
+    const token = jwt.sign(
+      { userId: user._id, userType: 'admin', shopId },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.status(201).json({
+      message: 'Admin registered successfully',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        userType: user.userType,
+        shopName: user.shopName
+      },
+      shopId,
+      shopName
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Regular signup
+router.post('/register', async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, password, userType } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists with this email' });
+      return res.status(400).json({ message: 'User already exists' });
     }
 
     const user = new User({
@@ -40,13 +106,16 @@ router.post('/register', [
       email,
       phone,
       password,
-      userType,
-      subscribeNewsletter: subscribeNewsletter || false
+      userType: userType || 'user'
     });
 
     await user.save();
 
-    const token = generateToken(user._id);
+    const token = jwt.sign(
+      { userId: user._id, userType: user.userType },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -56,43 +125,157 @@ router.post('/register', [
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone,
         userType: user.userType
       }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Universal Login - Auto-detects user type
-router.post('/login', [
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').notEmpty().withMessage('Password is required')
-], async (req, res) => {
+// Worker Signup
+router.post('/worker-signup', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+    const { firstName, lastName, phone, email, password, shopId } = req.body;
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
     }
 
-    const { email, password } = req.body;
+    let shop = null;
+    let validatedShopId = null;
+
+    // Verify shop exists if shopId is provided
+    if (shopId && shopId.trim()) {
+      shop = await Shop.findOne({ shopId: shopId.toUpperCase() });
+      if (!shop) {
+        return res.status(400).json({ message: 'Invalid shop ID' });
+      }
+      validatedShopId = shopId.toUpperCase();
+    }
+
+    // Create worker user
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      userType: 'worker',
+      ...(validatedShopId && { shopId: validatedShopId })
+    });
+
+    await user.save();
+
+    // Create worker profile
+    const worker = new Worker({
+      userId: user._id,
+      ...(validatedShopId && { shopId: validatedShopId })
+    });
+
+    await worker.save();
+
+    // Generate token
+    const tokenPayload = { userId: user._id, userType: 'worker' };
+    if (validatedShopId) {
+      tokenPayload.shopId = validatedShopId;
+    }
+
+    const token = jwt.sign(
+      tokenPayload,
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.status(201).json({
+      message: 'Worker registered successfully',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        userType: user.userType,
+        shopId: user.shopId
+      },
+      ...(shop && { shopName: shop.shopName })
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get Shop Info
+router.get('/shop/:shopId', async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    
+    const shop = await Shop.findOne({ shopId }).populate('adminId', 'firstName lastName email');
+    if (!shop) {
+      return res.status(404).json({ message: 'Shop not found' });
+    }
+
+    res.json({
+      shopId: shop.shopId,
+      shopName: shop.shopName,
+      phone: shop.phone,
+      admin: shop.adminId,
+      isActive: shop.isActive
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Login
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password, shopId } = req.body;
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    if (!user.isActive) {
-      return res.status(401).json({ error: 'Account is deactivated' });
+    // Handle shop ID update for workers
+    if (user.userType === 'worker' && shopId && shopId.trim()) {
+      const shop = await Shop.findOne({ shopId: shopId.toUpperCase() });
+      if (!shop) {
+        return res.status(400).json({ message: 'Invalid shop ID' });
+      }
+      
+      // Update user's shop ID
+      user.shopId = shopId.toUpperCase();
+      await user.save();
     }
 
-    const token = generateToken(user._id);
+    let tokenPayload = { userId: user._id, userType: user.userType };
+    let shopInfo = {};
+
+    if (user.userType === 'admin') {
+      const shop = await Shop.findOne({ adminId: user._id });
+      if (shop) {
+        tokenPayload.shopId = shop.shopId;
+        shopInfo = { shopId: shop.shopId, shopName: shop.shopName };
+      }
+    } else if (user.userType === 'worker' && user.shopId) {
+      const shop = await Shop.findOne({ shopId: user.shopId });
+      tokenPayload.shopId = user.shopId;
+      shopInfo = { shopId: user.shopId, shopName: shop?.shopName };
+    }
+
+    const token = jwt.sign(
+      tokenPayload,
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
 
     res.json({
       message: 'Login successful',
@@ -102,159 +285,45 @@ router.post('/login', [
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone,
-        userType: user.userType
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get current user
-router.get('/me', authenticate, async (req, res) => {
-  res.json({
-    user: {
-      id: req.user._id,
-      firstName: req.user.firstName,
-      lastName: req.user.lastName,
-      email: req.user.email,
-      phone: req.user.phone,
-      userType: req.user.userType,
-      currentEmployer: req.user.currentEmployer,
-      language: req.user.language,
-      profileImage: req.user.profileImage,
-      workHistory: req.user.workHistory
-    }
-  });
-});
-
-// Update user profile
-router.put('/profile', authenticate, [
-  body('firstName').optional().trim().notEmpty().withMessage('First name cannot be empty'),
-  body('lastName').optional().trim().notEmpty().withMessage('Last name cannot be empty'),
-  body('currentEmployer').optional().trim(),
-  body('language').optional().isIn(['en', 'es', 'fr', 'de']).withMessage('Invalid language'),
-  body('profileImage').optional().isString()
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array() });
-    }
-
-    const { firstName, lastName, currentEmployer, language, profileImage, workHistory } = req.body;
-    
-    const updateData = {};
-    if (firstName) updateData.firstName = firstName;
-    if (lastName) updateData.lastName = lastName;
-    if (currentEmployer !== undefined) updateData.currentEmployer = currentEmployer;
-    if (language) updateData.language = language;
-    if (profileImage !== undefined) updateData.profileImage = profileImage;
-    if (workHistory) updateData.workHistory = workHistory;
-
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
-    res.json({
-      message: 'Profile updated successfully',
-      user: {
-        id: updatedUser._id,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        email: updatedUser.email,
-        phone: updatedUser.phone,
-        userType: updatedUser.userType,
-        currentEmployer: updatedUser.currentEmployer,
-        language: updatedUser.language,
-        profileImage: updatedUser.profileImage,
-        workHistory: updatedUser.workHistory
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get all users (Admin only)
-router.get('/users', authenticate, async (req, res) => {
-  try {
-    if (req.user.userType !== 'admin') {
-      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
-    }
-
-    const users = await User.find({}, '-password').sort({ createdAt: -1 });
-    
-    res.json({
-      users: users.map(user => ({
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
         userType: user.userType,
-        currentEmployer: user.currentEmployer,
-        language: user.language,
-        isActive: user.isActive,
-        createdAt: user.createdAt
-      }))
+        shopId: user.shopId,
+        shopName: user.shopName
+      },
+      ...shopInfo
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Update user role (Admin only)
-router.put('/users/:userId/role', authenticate, [
-  body('userType').isIn(['user', 'worker', 'admin']).withMessage('Invalid user type')
-], async (req, res) => {
+// Get Workers by Shop
+router.get('/shop/:shopId/workers', async (req, res) => {
   try {
-    if (req.user.userType !== 'admin') {
-      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    const { shopId } = req.params;
+    
+    const shop = await Shop.findOne({ shopId });
+    if (!shop) {
+      return res.status(404).json({ message: 'Shop not found' });
     }
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
-    }
-
-    const { userId } = req.params;
-    const { userType } = req.body;
-
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { userType },
-      { new: true, runValidators: true }
-    ).select('-password');
-
-    if (!updatedUser) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const workers = await User.find({ 
+      userType: 'worker', 
+      shopId: shopId 
+    }).select('-password -resetPasswordOTP -resetPasswordExpiry');
 
     res.json({
-      message: 'User role updated successfully',
-      user: {
-        id: updatedUser._id,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        email: updatedUser.email,
-        userType: updatedUser.userType
-      }
+      shopName: shop.shopName,
+      workers
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Worker-specific login
-router.post('/worker-login', [
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').notEmpty().withMessage('Password is required')
-], async (req, res) => {
+// Forgot Password
+router.post('/forgot-password', async (req, res) => {
   try {
+<<<<<<< HEAD
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -341,7 +410,7 @@ router.post('/user-login', [
   }
 });
 
-// Forgot Password - Send OTP
+// Forgot Password - Send Reset Link
 router.post('/forgot-password', [
   body('email').isEmail().withMessage('Valid email is required')
 ], async (req, res) => {
@@ -352,29 +421,50 @@ router.post('/forgot-password', [
     }
 
     const { email } = req.body;
-    console.log('Looking for user with email:', email);
     
+=======
+    const { email } = req.body;
+
+>>>>>>> 273ef487d9fc6a81a5a2a2a4f9ab875e7fcce14d
     const user = await User.findOne({ email });
-    
     if (!user) {
-      return res.status(404).json({ message: 'User not found with this email' });
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+<<<<<<< HEAD
+    // Delete any existing reset tokens for this user
+    await PasswordResetToken.deleteMany({ userId: user._id });
 
-    console.log('Generated OTP:', otp);
+    // Generate secure token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    // Update user with OTP
-    await User.findByIdAndUpdate(user._id, {
-      resetPasswordOTP: otp,
-      resetPasswordExpiry: otpExpiry
+    // Save token to database
+    await PasswordResetToken.create({
+      userId: user._id,
+      token,
+      expiresAt
     });
 
-    console.log(`OTP for ${email}: ${otp}`);
+    // Create reset link
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
 
-    res.json({ message: 'OTP sent to your email address' });
+    // Send email with MJML template
+    try {
+      console.log('Attempting to send email to:', email);
+      console.log('Reset link:', resetLink);
+      console.log('API Key exists:', !!process.env.RESEND_API_KEY);
+      
+      const result = await sendPasswordResetEmail(email, resetLink, user.firstName);
+      console.log('Email send result:', result);
+      console.log(`Password reset email sent to: ${email}`);
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      console.error('Error details:', emailError.message);
+      return res.status(500).json({ message: 'Failed to send reset email. Please try again.' });
+    }
+
+    res.json({ message: 'Password reset link sent to your email address' });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ message: error.message });
@@ -394,29 +484,35 @@ router.post('/verify-otp', [
 
     const { email, otp } = req.body;
     const user = await User.findOne({ email });
+=======
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+>>>>>>> 273ef487d9fc6a81a5a2a2a4f9ab875e7fcce14d
     
-    if (!user || !user.resetPasswordOTP || !user.resetPasswordExpiry) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    // Set OTP and expiry (10 minutes)
+    user.resetPasswordOTP = otp;
+    user.resetPasswordExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    // Send OTP via email
+    const emailSent = await sendOTPEmail(email, otp, user.firstName);
+    
+    if (!emailSent) {
+      return res.status(500).json({ message: 'Failed to send email. Please try again.' });
     }
 
-    if (user.resetPasswordExpiry < new Date()) {
-      return res.status(400).json({ message: 'OTP has expired' });
-    }
-
-    if (user.resetPasswordOTP !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
-    }
-
-    res.json({ message: 'OTP verified successfully' });
+    res.json({
+      message: 'Password reset OTP sent to your email address'
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Reset Password
+<<<<<<< HEAD
+// Reset Password with Token
 router.post('/reset-password', [
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  body('token').notEmpty().withMessage('Reset token is required'),
   body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
 ], async (req, res) => {
   try {
@@ -425,30 +521,52 @@ router.post('/reset-password', [
       return res.status(400).json({ message: errors.array()[0].msg });
     }
 
-    const { email, otp, newPassword } = req.body;
-    const user = await User.findOne({ email });
+    const { token, newPassword } = req.body;
     
-    if (!user || !user.resetPasswordOTP || !user.resetPasswordExpiry) {
+    // Find valid token
+    const resetToken = await PasswordResetToken.findOne({ 
+      token,
+      expiresAt: { $gt: new Date() }
+    }).populate('userId');
+    
+    if (!resetToken) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    // Update user password
+    const user = resetToken.userId;
+=======
+// Reset Password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    const user = await User.findOne({ 
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordExpiry: { $gt: new Date() }
+    });
+
+    if (!user) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
-    if (user.resetPasswordExpiry < new Date()) {
-      return res.status(400).json({ message: 'OTP has expired' });
-    }
-
-    if (user.resetPasswordOTP !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
-    }
-
-    // Update password and clear OTP
+    // Update password
+>>>>>>> 273ef487d9fc6a81a5a2a2a4f9ab875e7fcce14d
     user.password = newPassword;
-    user.resetPasswordOTP = undefined;
-    user.resetPasswordExpiry = undefined;
     await user.save();
+
+    // Delete the used token
+    await PasswordResetToken.deleteOne({ _id: resetToken._id });
 
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
+<<<<<<< HEAD
+    console.error('Reset password error:', error);
     res.status(500).json({ message: error.message });
+=======
+    res.status(500).json({ message: 'Server error', error: error.message });
+>>>>>>> 273ef487d9fc6a81a5a2a2a4f9ab875e7fcce14d
   }
 });
 
