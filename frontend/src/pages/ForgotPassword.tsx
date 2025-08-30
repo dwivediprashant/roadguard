@@ -9,30 +9,44 @@ import { authAPI } from '../lib/api';
 import { Mail, ArrowLeft, Shield, CheckCircle } from 'lucide-react';
 
 const ForgotPassword = () => {
-  const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: Reset Password
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const sendOTP = async (e: React.FormEvent) => {
+  const sendResetLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      await authAPI.forgotPassword(email);
-      toast({
-        title: "OTP Sent",
-        description: `Verification code sent to ${email}`,
+      const response = await fetch('http://localhost:3001/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       });
-      setStep(2);
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Reset Link Sent",
+          description: `Password reset link sent to ${email}`,
+        });
+        setEmailSent(true);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to send reset link",
+          variant: "destructive",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to send OTP",
+        description: "Failed to send reset link",
         variant: "destructive",
       });
     } finally {
@@ -40,59 +54,7 @@ const ForgotPassword = () => {
     }
   };
 
-  const verifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    try {
-      await authAPI.verifyOTP(email, otp);
-      toast({
-        title: "OTP Verified",
-        description: "Please set your new password",
-      });
-      setStep(3);
-    } catch (error: any) {
-      toast({
-        title: "Invalid OTP",
-        description: error.response?.data?.message || "Please enter a valid OTP",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const resetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      await authAPI.resetPassword(email, otp, newPassword);
-      toast({
-        title: "Password Reset Successful",
-        description: "You can now login with your new password",
-      });
-      navigate('/login');
-    } catch (error: any) {
-      toast({
-        title: "Reset Failed",
-        description: error.response?.data?.message || "Failed to reset password",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -112,16 +74,13 @@ const ForgotPassword = () => {
                 <Shield className="w-8 h-8 text-primary-foreground" />
               </div>
               <CardTitle className="text-2xl font-bold">
-                {step === 1 && "Forgot Password"}
-                {step === 2 && "Verify OTP"}
-                {step === 3 && "Reset Password"}
+                {!emailSent ? "Forgot Password" : "Email Sent"}
               </CardTitle>
             </CardHeader>
 
             <CardContent>
-              {/* Step 1: Email Input */}
-              {step === 1 && (
-                <form onSubmit={sendOTP} className="space-y-4">
+              {!emailSent ? (
+                <form onSubmit={sendResetLink} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
                     <div className="relative">
@@ -136,78 +95,36 @@ const ForgotPassword = () => {
                         required
                       />
                     </div>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Sending...' : 'Send OTP'}
-                  </Button>
-                </form>
-              )}
-
-              {/* Step 2: OTP Verification */}
-              {step === 2 && (
-                <form onSubmit={verifyOTP} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="otp">Enter 6-digit OTP</Label>
-                    <Input
-                      id="otp"
-                      type="text"
-                      placeholder="123456"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      maxLength={6}
-                      className="text-center text-lg tracking-widest"
-                      required
-                    />
-                    <p className="text-sm text-muted-foreground text-center">
-                      OTP sent to {email}
+                    <p className="text-sm text-muted-foreground">
+                      Enter your email address and we'll send you a link to reset your password.
                     </p>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Verifying...' : 'Verify OTP'}
+                    {isLoading ? 'Sending...' : 'Send Reset Link'}
                   </Button>
+                </form>
+              ) : (
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">Check Your Email</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We've sent a password reset link to <strong>{email}</strong>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      The link will expire in 15 minutes for security.
+                    </p>
+                  </div>
                   <Button 
-                    type="button" 
-                    variant="ghost" 
+                    variant="outline" 
+                    onClick={() => setEmailSent(false)}
                     className="w-full"
-                    onClick={() => {
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-                      sendOTP(fakeEvent);
-                    }}
                   >
-                    Resend OTP
+                    Send Another Link
                   </Button>
-                </form>
-              )}
-
-              {/* Step 3: Reset Password */}
-              {step === 3 && (
-                <form onSubmit={resetPassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      placeholder="Enter new password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Resetting...' : 'Reset Password'}
-                  </Button>
-                </form>
+                </div>
               )}
 
               <div className="mt-6 text-center">

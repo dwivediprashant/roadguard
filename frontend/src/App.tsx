@@ -22,6 +22,7 @@ const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
