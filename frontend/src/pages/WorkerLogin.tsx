@@ -38,12 +38,38 @@ const WorkerLogin = () => {
     setIsLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      // Use universal login endpoint
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // Store token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Check if user is actually a worker
+      if (data.user.userType !== 'worker') {
+        throw new Error('This email is registered as a user. Please use the user login page.');
+      }
+      
       toast({
         title: "Welcome back!",
         description: "Successfully logged in as worker",
       });
-      navigate('/worker-dashboard');
+      window.location.href = '/worker';
     } catch (error: any) {
       toast({
         title: "Login failed",

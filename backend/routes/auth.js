@@ -65,7 +65,7 @@ router.post('/register', [
   }
 });
 
-// Login
+// Universal Login - Auto-detects user type
 router.post('/login', [
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').notEmpty().withMessage('Password is required')
@@ -123,6 +123,98 @@ router.get('/me', authenticate, async (req, res) => {
       userType: req.user.userType
     }
   });
+});
+
+// Worker-specific login
+router.post('/worker-login', [
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('password').notEmpty().withMessage('Password is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email, userType: 'worker' });
+    if (!user) {
+      return res.status(401).json({ error: 'Worker account not found with this email' });
+    }
+
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ error: 'Worker account is deactivated' });
+    }
+
+    const token = generateToken(user._id);
+
+    res.json({
+      message: 'Worker login successful',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        userType: user.userType
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// User-specific login
+router.post('/user-login', [
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('password').notEmpty().withMessage('Password is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email, userType: 'user' });
+    if (!user) {
+      return res.status(401).json({ error: 'User account not found with this email' });
+    }
+
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ error: 'User account is deactivated' });
+    }
+
+    const token = generateToken(user._id);
+
+    res.json({
+      message: 'User login successful',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        userType: user.userType
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 export default router;

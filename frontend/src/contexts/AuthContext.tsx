@@ -39,9 +39,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
+<<<<<<< HEAD
 
 
     if (storedToken && storedUser) {
@@ -49,6 +51,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(JSON.parse(storedUser));
     }
     setIsLoading(false);
+=======
+      if (storedToken && storedUser) {
+        try {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+        } catch (error) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+      setIsLoading(false);
+    };
+    
+    initAuth();
+>>>>>>> 2d4a907322722fc133d75ffbb28203b315569973
   }, []);
 
   const login = async (email: string, password: string) => {
