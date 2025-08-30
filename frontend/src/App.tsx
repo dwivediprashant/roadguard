@@ -24,11 +24,8 @@ const AdminSignup = lazy(() => import("./pages/AdminSignup"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
 const WorkerSignup = lazy(() => import("./pages/WorkerSignup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-<<<<<<< HEAD
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
-=======
->>>>>>> 273ef487d9fc6a81a5a2a2a4f9ab875e7fcce14d
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({

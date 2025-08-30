@@ -58,6 +58,16 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpiry: {
     type: Date
   },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationOTP: {
+    type: String
+  },
+  verificationExpiry: {
+    type: Date
+  },
   // Profile fields
   currentEmployer: {
     type: String,
