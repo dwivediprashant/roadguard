@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import GoogleMap from "@/components/Map";
+import SimpleMap from "@/components/SimpleMap";
 import { 
   Car, 
   MapPin, 
@@ -76,14 +76,9 @@ const UserDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <GoogleMap 
-                center={userLocation}
-                zoom={15}
-                height="500px"
-                showUserLocation={true}
-                liveTracking={true}
-                onLocationUpdate={(location) => setUserLocation(location)}
-              />
+              <div style={{ height: '500px' }}>
+                <SimpleMap />
+              </div>
             </CardContent>
           </Card>
         </div>
