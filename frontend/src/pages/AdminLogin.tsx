@@ -30,12 +30,35 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      if (data.user.userType !== 'admin') {
+        throw new Error('Access denied. Admin credentials required.');
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      if (data.shopId) {
+        localStorage.setItem('shopId', data.shopId);
+      }
+
       toast({
         title: "Admin Login successful",
         description: "Welcome to Admin Dashboard!",
       });
-      navigate('/dashboard');
+      navigate('/admin-dashboard');
     } catch (error: any) {
       toast({
         title: "Admin Login failed",
@@ -146,9 +169,14 @@ const AdminLogin = () => {
 
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Admin Credentials:</strong><br />
-                  Email: admin@roadguard.com<br />
-                  Password: Admin@123
+                  Don't have an admin account?{" "}
+                  <button 
+                    type="button"
+                    onClick={() => navigate('/admin-signup')}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Create Admin Account
+                  </button>
                 </p>
               </div>
             </CardContent>

@@ -20,9 +20,10 @@ const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
 const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminSignup = lazy(() => import("./pages/AdminSignup"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
+const WorkerSignup = lazy(() => import("./pages/WorkerSignup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -91,8 +92,11 @@ const App = () => (
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/admin-login" element={<AdminLogin />} />
+                <Route path="/admin-signup" element={<AdminSignup />} />
                 <Route path="/worker-login" element={<WorkerLogin />} />
+                <Route path="/worker-signup" element={<WorkerSignup />} />
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin-dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/worker" element={<ProtectedRoute><WorkerPortal /></ProtectedRoute>} />
                 <Route path="/worker/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
                 <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
