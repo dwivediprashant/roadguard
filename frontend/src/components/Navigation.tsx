@@ -1,49 +1,156 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield, User, Settings2, Crown } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Menu, MapPin, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
-const Navigation = () => {
+const AuthButtons = () => {
+  const { user, logout } = useAuth();
+
+  if (user) {
+    return (
+      <div className="hidden sm:flex items-center space-x-2">
+        <Link to="/dashboard">
+          <Button variant="ghost" className="transition-smooth hover:scale-105">
+            <LayoutDashboard className="w-4 h-4 mr-2" />
+            Dashboard
+          </Button>
+        </Link>
+        <Button 
+          variant="ghost" 
+          onClick={logout}
+          className="transition-smooth hover:scale-105"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <nav className="bg-gray-800 border-b border-gray-700 px-6 py-4">
-      <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center space-x-4">
-          <Shield className="h-8 w-8 text-green-500" />
-          <div>
-            <h1 className="text-xl font-bold text-white">RoadGuard</h1>
-            <p className="text-sm text-gray-400">Roadside Assistance Platform</p>
+    <div className="hidden sm:flex items-center space-x-2">
+      <Link to="/admin-login">
+        <Button variant="ghost" size="sm">
+          Admin
+        </Button>
+      </Link>
+      <Link to="/worker-login">
+        <Button variant="ghost" size="sm">
+          Worker
+        </Button>
+      </Link>
+      <Link to="/login">
+        <Button variant="ghost" className="transition-smooth hover:scale-105">
+          <LogIn className="w-4 h-4 mr-2" />
+          User Login
+        </Button>
+      </Link>
+      <Link to="/signup">
+        <Button variant="trust" className="transition-smooth hover:scale-105">
+          <UserPlus className="w-4 h-4 mr-2" />
+          Sign Up
+        </Button>
+      </Link>
+    </div>
+  );
+};
+
+export const Navigation = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const { user, logout } = useAuth();
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-border/50">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo & User Info */}
+          <div className="flex items-center space-x-4">
+            <Link to="/" className="flex items-center space-x-2 transition-smooth hover:scale-105">
+              <div className="w-10 h-10 gradient-hero rounded-lg flex items-center justify-center shimmer">
+                <MapPin className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold text-foreground">RoadGuard</span>
+            </Link>
+            
+            {user && (
+              <div className="flex items-center space-x-3 ml-6">
+                <Link to="/profile" className="flex items-center space-x-2 hover:opacity-80 transition-smooth">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={user.profileImage} />
+                    <AvatarFallback className="text-xs bg-primary/10">
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden md:block">
+                    <p className="text-sm font-medium text-foreground">{user.firstName} {user.lastName}</p>
+                  </div>
+                </Link>
+                <Badge variant="outline" className="hidden sm:inline-flex">
+                  {user.userType === 'admin' ? 'Admin' : user.userType === 'worker' ? 'Worker' : 'User'}
+                </Badge>
+              </div>
+            )}
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <Button 
-            variant="outline" 
-            onClick={() => window.location.href = '/enhanced-login'}
-            className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white"
-          >
-            <User className="h-4 w-4 mr-2" />
-            Enhanced Login
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            onClick={() => window.location.href = '/admin-dashboard'}
-            className="text-yellow-500 hover:bg-yellow-500 hover:text-white"
-          >
-            <Crown className="h-4 w-4 mr-2" />
-            Admin
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            onClick={() => window.location.href = '/worker-dashboard'}
-            className="text-blue-500 hover:bg-blue-500 hover:text-white"
-          >
-            <Settings2 className="h-4 w-4 mr-2" />
-            Worker
-          </Button>
+
+          {/* Auth & Mobile Menu */}
+          <div className="flex items-center space-x-4">
+            <ThemeToggle />
+            
+            <AuthButtons />
+
+            {/* Mobile Menu */}
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="sm:hidden">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px] glass-effect">
+                <div className="flex flex-col space-y-4 mt-8">
+                  {user ? (
+                    <>
+                      <Link to="/dashboard" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start text-lg">
+                          <LayoutDashboard className="w-5 h-5 mr-3" />
+                          Dashboard
+                        </Button>
+                      </Link>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => { logout(); setIsOpen(false); }}
+                        className="w-full justify-start text-lg"
+                      >
+                        <LogOut className="w-5 h-5 mr-3" />
+                        Logout
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Link to="/login" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start text-lg">
+                          <LogIn className="w-5 h-5 mr-3" />
+                          User Login
+                        </Button>
+                      </Link>
+                      <Link to="/signup" onClick={() => setIsOpen(false)}>
+                        <Button variant="trust" className="w-full justify-start text-lg">
+                          <UserPlus className="w-5 h-5 mr-3" />
+                          Sign Up
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </nav>
   );
 };
-
-export default Navigation;
