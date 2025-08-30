@@ -7,10 +7,12 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { lazy, Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import FluidCursor from "@/components/FluidCursor";
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
+const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const WorkerDashboard = lazy(() => import("./pages/WorkerDashboard"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal"));
@@ -54,7 +56,6 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const DashboardRoute = () => {
   const { user } = useAuth();
   
-
   if (user?.userType === 'admin') {
     return <AdminDashboard />;
   }
@@ -64,10 +65,10 @@ const DashboardRoute = () => {
   }
   
   if (user?.userType === 'user') {
-    return <UserDashboard />;
+    return <WorkshopDashboard />;
   }
   
-  return <UserDashboard />;
+  return <WorkshopDashboard />;
 };
 
 const App = () => (
@@ -76,6 +77,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <FluidCursor />
         <AuthProvider>
           <BrowserRouter>
             <Suspense fallback={<LoadingSpinner />}>
@@ -84,12 +86,14 @@ const App = () => (
                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                 <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/worker-login" element={<WorkerLogin />} />
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/worker" element={<ProtectedRoute><WorkerPortal /></ProtectedRoute>} />
                 <Route path="/worker/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
                 <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
+
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

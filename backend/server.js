@@ -8,6 +8,7 @@ import Worker from './models/Worker.js';
 import authRoutes from './routes/auth.js';
 import workerRoutes from './routes/worker.js';
 import seedRoutes from './routes/seed.js';
+import workshopRoutes from './routes/workshops.js';
 import { authenticate } from './middleware/auth.js';
 import { authenticateUser } from './middleware/workerAuth.js';
 
@@ -38,6 +39,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/worker', workerRoutes);
 app.use('/api/seed', seedRoutes);
+app.use('/api/workshops', workshopRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'RoadGuard API is running' });
