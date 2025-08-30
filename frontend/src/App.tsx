@@ -13,6 +13,8 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const WorkerDashboard = lazy(() => import("./pages/WorkerDashboard"));
+const WorkerPortal = lazy(() => import("./pages/WorkerPortal"));
+const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
 const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -56,7 +58,7 @@ const DashboardRoute = () => {
   }
   
   if (user?.userType === 'worker') {
-    return <WorkerDashboard />;
+    return <WorkerPortal />;
   }
   
   if (user?.userType === 'user') {
@@ -83,7 +85,9 @@ const App = () => (
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/worker-login" element={<WorkerLogin />} />
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/worker" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
+                <Route path="/worker" element={<ProtectedRoute><WorkerPortal /></ProtectedRoute>} />
+                <Route path="/worker/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
+                <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

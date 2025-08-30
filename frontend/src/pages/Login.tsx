@@ -32,12 +32,40 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      // Use universal login endpoint
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // Store token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Force page reload to update auth context
       toast({
         title: "Login successful",
         description: "Welcome back to RoadGuard!",
       });
-      navigate('/dashboard');
+      
+      // Redirect based on user type
+      if (data.user.userType === 'worker') {
+        window.location.href = '/worker';
+      } else {
+        window.location.href = '/dashboard';
+      }
     } catch (error: any) {
       toast({
         title: "Login failed",
