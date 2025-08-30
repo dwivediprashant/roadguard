@@ -62,6 +62,15 @@ const SignupPage = () => {
       return;
     }
 
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!formData.agreeToTerms) {
       toast({
         title: "Terms required",
@@ -75,6 +84,7 @@ const SignupPage = () => {
 
     try {
       const { confirmPassword, ...userData } = formData;
+      console.log('Sending registration data:', userData);
       await register(userData);
       toast({
         title: "Registration successful",
@@ -211,6 +221,7 @@ const SignupPage = () => {
                         value={formData.firstName}
                         onChange={(e) => handleInputChange("firstName", e.target.value)}
                         className="pl-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
                       />
                     </div>
                   </div>
@@ -222,6 +233,7 @@ const SignupPage = () => {
                       value={formData.lastName}
                       onChange={(e) => handleInputChange("lastName", e.target.value)}
                       className="glass-effect border-primary/20 focus:border-primary/50"
+                      required
                     />
                   </div>
                 </div>
@@ -239,6 +251,7 @@ const SignupPage = () => {
                         value={formData.email}
                         onChange={(e) => handleInputChange("email", e.target.value)}
                         className="pl-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
                       />
                     </div>
                   </div>
@@ -253,6 +266,7 @@ const SignupPage = () => {
                         value={formData.phone}
                         onChange={(e) => handleInputChange("phone", e.target.value)}
                         className="pl-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
                       />
                     </div>
                   </div>
@@ -271,6 +285,8 @@ const SignupPage = () => {
                         value={formData.password}
                         onChange={(e) => handleInputChange("password", e.target.value)}
                         className="pl-10 pr-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
+                        minLength={6}
                       />
                       <Button
                         type="button"
