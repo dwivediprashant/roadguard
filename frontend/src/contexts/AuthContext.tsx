@@ -7,7 +7,7 @@ interface User {
   lastName: string;
   email: string;
   phone: string;
-  userType: 'driver' | 'mechanic';
+  userType: 'user' | 'worker' | 'admin';
 }
 
 interface AuthContextType {
@@ -43,8 +43,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const storedUser = localStorage.getItem('user');
 
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
     setIsLoading(false);
   }, []);

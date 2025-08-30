@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +19,12 @@ import {
   ArrowRight,
   Shield,
   Star,
-  CheckCircle
+  CheckCircle,
+  Wrench,
+  Car,
+  Users,
+  Zap,
+  UserCheck
 } from "lucide-react";
 
 const SignupPage = () => {
@@ -31,7 +38,7 @@ const SignupPage = () => {
     phone: "",
     password: "",
     confirmPassword: "",
-    userType: "driver", // driver or mechanic
+    userType: "user", // user or worker
     agreeToTerms: false,
     subscribeNewsletter: false
   });
@@ -50,6 +57,15 @@ const SignupPage = () => {
       toast({
         title: "Password mismatch",
         description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
@@ -103,36 +119,92 @@ const SignupPage = () => {
                 <Star className="w-8 h-8 text-primary-foreground" />
               </div>
               <div className="space-y-2">
-                <CardTitle className="text-3xl font-bold gradient-emergency bg-clip-text text-transparent">
-                  Join RoadGuard
+                <CardTitle className="text-3xl font-bold text-foreground">
+                  Create Account
                 </CardTitle>
                 <p className="text-muted-foreground">
-                  Create your account and get access to 24/7 emergency assistance
+                  Join RoadGuard for reliable roadside assistance
                 </p>
               </div>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* User Type Selection */}
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  type="button"
-                  variant={formData.userType === "driver" ? "emergency" : "outline"}
-                  className="h-16 flex-col space-y-2 transition-bounce"
-                  onClick={() => handleInputChange("userType", "driver")}
-                >
-                  <User className="w-6 h-6" />
-                  <span>I need help</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant={formData.userType === "mechanic" ? "trust" : "outline"}
-                  className="h-16 flex-col space-y-2 transition-bounce"
-                  onClick={() => handleInputChange("userType", "mechanic")}
-                >
-                  <Shield className="w-6 h-6" />
-                  <span>I provide help</span>
-                </Button>
+              {/* Role Selection */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="userType">Account Type</Label>
+                  <div className="relative">
+                    <UserCheck className="absolute left-3 top-3 w-4 h-4 text-muted-foreground z-10" />
+                    <Select value={formData.userType} onValueChange={(value) => handleInputChange("userType", value)}>
+                      <SelectTrigger className="pl-10 glass-effect border-primary/20 focus:border-primary/50 h-12">
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user" className="cursor-pointer">
+                          <div className="flex items-center space-x-3 py-2">
+                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                              <Car className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">User</div>
+                              <div className="text-xs text-muted-foreground">I need roadside assistance</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="worker" className="cursor-pointer">
+                          <div className="flex items-center space-x-3 py-2">
+                            <div className="w-8 h-8 bg-secondary/10 rounded-full flex items-center justify-center">
+                              <Wrench className="w-4 h-4 text-secondary" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">Worker</div>
+                              <div className="text-xs text-muted-foreground">I provide roadside services</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Role Description */}
+                  {formData.userType && (
+                    <div className={`p-4 rounded-lg border transition-all duration-300 ${
+                      formData.userType === "user" 
+                        ? "bg-primary/5 border-primary/20" 
+                        : "bg-secondary/5 border-secondary/20"
+                    }`}>
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          formData.userType === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                        }`}>
+                          {formData.userType === "user" ? <Car className="w-5 h-5" /> : <Wrench className="w-5 h-5" />}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold capitalize">{formData.userType}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {formData.userType === "user" 
+                              ? "Get instant help with roadside emergencies, flat tires, battery jumps, and more."
+                              : "Earn money by helping drivers in need. Set your own schedule and work flexibly."
+                            }
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          {formData.userType === "user" ? (
+                            <>
+                              <Badge variant="secondary" className="text-xs">24/7 Help</Badge>
+                              <Badge variant="secondary" className="text-xs">Instant</Badge>
+                            </>
+                          ) : (
+                            <>
+                              <Badge variant="outline" className="text-xs">Flexible</Badge>
+                              <Badge variant="outline" className="text-xs">Earn More</Badge>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <form className="space-y-4" onSubmit={handleSubmit}>
@@ -148,6 +220,7 @@ const SignupPage = () => {
                         value={formData.firstName}
                         onChange={(e) => handleInputChange("firstName", e.target.value)}
                         className="pl-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
                       />
                     </div>
                   </div>
@@ -159,6 +232,7 @@ const SignupPage = () => {
                       value={formData.lastName}
                       onChange={(e) => handleInputChange("lastName", e.target.value)}
                       className="glass-effect border-primary/20 focus:border-primary/50"
+                      required
                     />
                   </div>
                 </div>
@@ -176,6 +250,7 @@ const SignupPage = () => {
                         value={formData.email}
                         onChange={(e) => handleInputChange("email", e.target.value)}
                         className="pl-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
                       />
                     </div>
                   </div>
@@ -190,6 +265,7 @@ const SignupPage = () => {
                         value={formData.phone}
                         onChange={(e) => handleInputChange("phone", e.target.value)}
                         className="pl-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
                       />
                     </div>
                   </div>
@@ -208,6 +284,8 @@ const SignupPage = () => {
                         value={formData.password}
                         onChange={(e) => handleInputChange("password", e.target.value)}
                         className="pl-10 pr-10 glass-effect border-primary/20 focus:border-primary/50"
+                        required
+                        minLength={6}
                       />
                       <Button
                         type="button"
@@ -278,13 +356,13 @@ const SignupPage = () => {
 
                 <Button 
                   type="submit" 
-                  variant={formData.userType === "driver" ? "emergency" : "trust"}
+                  variant={formData.userType === "user" ? "default" : "secondary"}
                   size="lg" 
-                  className="w-full transition-bounce hover:scale-105"
+                  className="w-full transition-all duration-300 hover:scale-105 font-semibold"
                   disabled={!formData.agreeToTerms || isLoading}
                 >
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                  {formData.userType === "user" ? <Car className="w-5 h-5 mr-2" /> : <Wrench className="w-5 h-5 mr-2" />}
+                  {isLoading ? 'Creating Account...' : `Join as ${formData.userType === 'user' ? 'User' : 'Worker'}`}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </form>
@@ -326,21 +404,66 @@ const SignupPage = () => {
           </Card>
 
           {/* Benefits Section */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="glass-effect text-center p-4">
-              <Shield className="w-8 h-8 text-primary mx-auto mb-2" />
-              <h3 className="font-semibold">Verified Network</h3>
-              <p className="text-xs text-muted-foreground">All mechanics background-checked</p>
-            </Card>
-            <Card className="glass-effect text-center p-4">
-              <CheckCircle className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <h3 className="font-semibold">24/7 Support</h3>
-              <p className="text-xs text-muted-foreground">Emergency help anytime</p>
-            </Card>
-            <Card className="glass-effect text-center p-4">
-              <Star className="w-8 h-8 text-accent mx-auto mb-2" />
-              <h3 className="font-semibold">Rated Service</h3>
-              <p className="text-xs text-muted-foreground">Quality guaranteed</p>
+          <div className="mt-8">
+            <Card className="glass-effect border-primary/10">
+              <CardContent className="p-6">
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-semibold mb-2">Why Choose RoadGuard?</h3>
+                  <p className="text-sm text-muted-foreground">Join thousands of satisfied {formData.userType === "user" ? "users" : "workers"}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {formData.userType === "user" ? (
+                    <>
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                          <Zap className="w-6 h-6 text-primary" />
+                        </div>
+                        <h4 className="font-semibold text-primary">Instant Help</h4>
+                        <p className="text-xs text-muted-foreground">Get assistance in minutes</p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                          <Shield className="w-6 h-6 text-primary" />
+                        </div>
+                        <h4 className="font-semibold text-primary">Verified Workers</h4>
+                        <p className="text-xs text-muted-foreground">Background-checked professionals</p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                          <Star className="w-6 h-6 text-primary" />
+                        </div>
+                        <h4 className="font-semibold text-primary">Rated Service</h4>
+                        <p className="text-xs text-muted-foreground">Quality guaranteed</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto">
+                          <Users className="w-6 h-6 text-secondary" />
+                        </div>
+                        <h4 className="font-semibold text-secondary">Flexible Work</h4>
+                        <p className="text-xs text-muted-foreground">Choose your own hours</p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto">
+                          <CheckCircle className="w-6 h-6 text-secondary" />
+                        </div>
+                        <h4 className="font-semibold text-secondary">Earn More</h4>
+                        <p className="text-xs text-muted-foreground">Competitive rates</p>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto">
+                          <Shield className="w-6 h-6 text-secondary" />
+                        </div>
+                        <h4 className="font-semibold text-secondary">Secure Platform</h4>
+                        <p className="text-xs text-muted-foreground">Safe transactions</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
             </Card>
           </div>
         </div>

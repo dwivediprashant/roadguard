@@ -13,8 +13,12 @@ const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const WorkerDashboard = lazy(() => import("./pages/WorkerDashboard"));
+const WorkerPortal = lazy(() => import("./pages/WorkerPortal"));
+const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
+const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -39,6 +43,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -49,19 +54,20 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const DashboardRoute = () => {
   const { user } = useAuth();
   
+
   if (user?.userType === 'admin') {
     return <AdminDashboard />;
   }
   
-  if (user?.userType === 'mechanic') {
-    return <WorkerDashboard />;
+  if (user?.userType === 'worker') {
+    return <WorkerPortal />;
   }
   
-  if (user?.userType === 'workshop') {
-    return <WorkshopDashboard />;
+  if (user?.userType === 'user') {
+    return <UserDashboard />;
   }
   
-  return <AdminDashboard />;
+  return <UserDashboard />;
 };
 
 const App = () => (
@@ -79,9 +85,12 @@ const App = () => (
                 <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
                 <Route path="/admin-login" element={<AdminLogin />} />
+                <Route path="/worker-login" element={<WorkerLogin />} />
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/worker" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
-                <Route path="/workshop" element={<ProtectedRoute><WorkshopDashboard /></ProtectedRoute>} />
+                <Route path="/worker" element={<ProtectedRoute><WorkerPortal /></ProtectedRoute>} />
+                <Route path="/worker/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
+                <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
+                <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
