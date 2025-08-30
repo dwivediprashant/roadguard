@@ -15,7 +15,7 @@ import { authenticateUser } from './middleware/workerAuth.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT) || 3001;
 
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
@@ -41,6 +41,11 @@ app.use('/api/worker', workerRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/workshops', workshopRoutes);
 app.use('/api/requests', requestRoutes);
+
+// Debug route to test auth routes
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working', timestamp: new Date().toISOString() });
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'RoadGuard API is running' });
@@ -79,11 +84,27 @@ app.get('/api/init', async (req, res) => {
       await workerUser.save();
     }
 
+    // Create sample admin if not exists
+    let adminUser = await User.findOne({ email: 'admin@roadguard.com' });
+    if (!adminUser) {
+      adminUser = new User({
+        firstName: 'Mike',
+        lastName: 'Admin',
+        email: 'admin@roadguard.com',
+        phone: '+1234567892',
+        password: 'password123',
+        userType: 'admin',
+        shopName: 'RoadGuard Main Shop'
+      });
+      await adminUser.save();
+    }
+
     res.json({
       message: 'Sample accounts created',
       credentials: {
         user: { email: 'user@roadguard.com', password: 'password123' },
-        worker: { email: 'worker@roadguard.com', password: 'password123' }
+        worker: { email: 'worker@roadguard.com', password: 'password123' },
+        admin: { email: 'admin@roadguard.com', password: 'password123' }
       }
     });
   } catch (error) {
@@ -97,9 +118,10 @@ app.listen(PORT, () => {
   console.log(`✅ Backend server running on port ${PORT}`);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.log(`Port ${PORT} is busy, trying ${PORT + 1}`);
-    app.listen(PORT + 1, () => {
-      console.log(`✅ Backend server running on port ${PORT + 1}`);
+    const newPort = parseInt(PORT) + 1;
+    console.log(`Port ${PORT} is busy, trying ${newPort}`);
+    app.listen(newPort, () => {
+      console.log(`✅ Backend server running on port ${newPort}`);
     });
   }
 });

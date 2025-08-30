@@ -1,249 +1,623 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, User, X, ChevronDown, Store } from "lucide-react";
-import ShopWorkers from "@/components/ShopWorkers";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Users, Settings, Bell, Search, Filter, Calendar, MapPin, Clock, 
+  CheckCircle, XCircle, AlertCircle, User, Building2, Wrench, 
+  BarChart3, TrendingUp, RefreshCw, Upload, Globe, ChevronDown,
+  Shield, Crown, Settings2, UserCheck, History, Network
+} from "lucide-react";
 
-export default function AdminDashboard() {
-  const [workshopOpen, setWorkshopOpen] = useState(true);
-  const [showNotification, setShowNotification] = useState(false);
-  const [showOpenOnly, setShowOpenOnly] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [distanceFilter, setDistanceFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('nearby');
-  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
-  const { user } = useAuth();
-  
-  const shopId = localStorage.getItem('shopId');
-  const shopName = user?.shopName || localStorage.getItem('shopName');
+const AdminDashboard = () => {
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [requests, setRequests] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0, workers: 0 });
+  const [filters, setFilters] = useState({ status: "all", distance: "all", sort: "newest" });
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [profileData, setProfileData] = useState({
+    name: user?.firstName + " " + user?.lastName || "",
+    role: user?.userType || "admin",
+    employer: user?.shopName || "",
+    language: "en",
+    profileImage: ""
+  });
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const [requestsRes, usersRes] = await Promise.all([
+        fetch(`http://localhost:3001/api/requests/admin/${user.id}`),
+        fetch('http://localhost:3001/api/auth/admins')
+      ]);
+
+      const requestsData = await requestsRes.json();
+      const usersData = await usersRes.json();
+
+      setRequests(requestsData);
+      setUsers(usersData);
+      
+      const stats = {
+        total: requestsData.length,
+        pending: requestsData.filter(r => r.status === 'pending').length,
+        completed: requestsData.filter(r => r.status === 'completed').length,
+        workers: usersData.filter(u => u.userType === 'worker').length
+      };
+      setStats(stats);
+
+      const recentNotifications = requestsData
+        .filter(r => r.status === 'pending')
+        .slice(0, 5)
+        .map(r => ({
+          id: r._id,
+          type: 'request',
+          title: 'New Service Request',
+          message: `${r.userId?.firstName} needs ${r.urgency} priority assistance`,
+          time: new Date(r.createdAt).toLocaleTimeString()
+        }));
+      setNotifications(recentNotifications);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to load data", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, toast]);
+
+  useEffect(() => {
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
+
+  const updateRequestStatus = async (requestId, status) => {
+    try {
+      await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      toast({ title: "Success", description: `Request ${status}` });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update request", variant: "destructive" });
+    }
+  };
+
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      await fetch(`http://localhost:3001/api/auth/users/${userId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+      });
+      toast({ title: "Success", description: "User role updated" });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update role", variant: "destructive" });
+    }
+  };
+
+  const filteredRequests = requests.filter(request => {
+    if (filters.status !== "all" && request.status !== filters.status) return false;
+    return true;
+  }).sort((a, b) => {
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    return filters.sort === "newest" ? dateB - dateA : dateA - dateB;
+  });
+
+  const getRoleIcon = (role) => {
+    switch (role) {
+      case 'admin': return <Crown className="h-4 w-4 text-yellow-500" />;
+      case 'worker': return <Settings2 className="h-4 w-4 text-blue-500" />;
+      default: return <User className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getRoleBadge = (role) => {
+    const colors = {
+      admin: "bg-yellow-100 text-yellow-800",
+      worker: "bg-blue-100 text-blue-800",
+      user: "bg-gray-100 text-gray-800"
+    };
+    return <Badge className={colors[role]}>{role}</Badge>;
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      {/* Top Navigation Bar */}
-      <div className="bg-card border-b border-border px-6 py-4">
-        <div className="flex justify-between items-center max-w-7xl mx-auto">
-          {/* Left Side - Workshop Status Toggle */}
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => setWorkshopOpen(!workshopOpen)}
-              className={`px-6 py-2 rounded-lg font-medium transition-smooth ${
-                workshopOpen 
-                  ? 'gradient-emergency text-primary-foreground emergency-glow' 
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              <div className={`w-3 h-3 rounded-full mr-2 ${workshopOpen ? 'bg-green-200' : 'bg-gray-200'}`} />
-              {workshopOpen ? 'Open For Request' : 'Closed'}
-            </Button>
-            
-            {/* Workshop Status Explanation */}
-            <div className="hidden lg:block ml-4 p-3 glass-effect border-primary/20 rounded-lg">
-              <p className="text-sm text-foreground">
-                <strong>Open for requests:</strong> If they are ready to receive the request<br/>
-                <strong>Closed:</strong> If they don't want to accept the request for now.
-              </p>
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Shield className="h-8 w-8 text-green-500" />
+            <div>
+              <h1 className="text-xl font-bold">RoadGuard Admin</h1>
+              <p className="text-sm text-gray-400">Management Dashboard</p>
             </div>
           </div>
-
-          {/* Right Side - Notification & User */}
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={() => setShowNotificationPanel(!showNotificationPanel)}
-              className="relative gradient-trust text-primary-foreground px-4 py-2 rounded-lg trust-glow"
-            >
-              <Bell className="h-4 w-4 mr-2" />
-              Notification
-              <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center text-white">
-                3
-              </span>
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="sm" onClick={fetchDashboardData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
+            <div className="relative">
+              <Button variant="ghost" size="sm">
+                <Bell className="h-4 w-4" />
+                {notifications.length > 0 && (
+                  <Badge className="absolute -top-1 -right-1 bg-red-500 text-xs px-1">
+                    {notifications.length}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+            <Button variant="outline" onClick={logout} className="text-red-400 border-red-400 hover:bg-red-400 hover:text-white">
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
 
-            <Button variant="outline" className="glass-effect border-primary/20 px-4 py-2 rounded-lg">
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="w-64 bg-gray-800 border-r border-gray-700 min-h-screen">
+          <nav className="p-4 space-y-2">
+            <Button
+              variant={activeTab === "dashboard" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("dashboard")}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+            <Button
+              variant={activeTab === "requests" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("requests")}
+            >
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Service Requests
+            </Button>
+            <Button
+              variant={activeTab === "users" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("users")}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              User Management
+            </Button>
+            <Button
+              variant={activeTab === "profile" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("profile")}
+            >
               <User className="h-4 w-4 mr-2" />
-              User
-              <ChevronDown className="h-4 w-4 ml-2" />
+              Profile
             </Button>
-          </div>
-        </div>
-      </div>
+            <Button
+              variant={activeTab === "hierarchy" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("hierarchy")}
+            >
+              <Network className="h-4 w-4 mr-2" />
+              Organization
+            </Button>
+          </nav>
+        </aside>
 
-      {/* Filter Bar */}
-      <div className="bg-card border-b border-border px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-wrap items-center gap-6">
-            {/* Show Open Only Checkbox */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="showOpen"
-                checked={showOpenOnly}
-                onCheckedChange={setShowOpenOnly}
-              />
-              <Label htmlFor="showOpen" className="text-sm font-medium">Show open only</Label>
-            </div>
-
-            {/* Status Dropdown */}
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Status:</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32 glass-effect border-primary/20 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Distance Dropdown */}
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium">Distance:</Label>
-              <Select value={distanceFilter} onValueChange={setDistanceFilter}>
-                <SelectTrigger className="w-32 glass-effect border-primary/20 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="2km">2 km</SelectItem>
-                  <SelectItem value="5km">5 km</SelectItem>
-                  <SelectItem value="10km">10 km</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sort By Radio Buttons */}
-            <div className="flex items-center gap-4">
-              <Label className="text-sm font-medium">Sort by:</Label>
-              <RadioGroup value={sortBy} onValueChange={setSortBy} className="flex gap-4">
+        {/* Main Content */}
+        <main className="flex-1 p-6">
+          {activeTab === "dashboard" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Dashboard Overview</h2>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="nearby" id="nearby" />
-                  <Label htmlFor="nearby" className="text-sm">Nearby</Label>
+                  <Badge variant="secondary">Live Updates</Badge>
+                  <span className="text-sm text-gray-400">
+                    Last updated: {new Date().toLocaleTimeString()}
+                  </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="rated" id="rated" />
-                  <Label htmlFor="rated" className="text-sm">Most Rated</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-        </div>
-      </div>
+              </div>
 
-      {/* Main Content Area */}
-      <div className="relative max-w-7xl mx-auto px-6 py-8">
-        {/* Main Dashboard Card */}
-        <Card className="glass-effect border-primary/20 rounded-xl emergency-glow">
-          <CardContent className="p-12 text-center">
-            <div className="max-w-2xl mx-auto">
-              <h2 className="text-2xl font-bold gradient-emergency bg-clip-text text-transparent mb-4">Admin Dashboard</h2>
-              
-              {/* Shop Information */}
-              {shopId && (
-                <div className="glass-effect border-primary/20 rounded-lg p-4 mb-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Store className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-primary">Shop Information</h3>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Total Requests</p>
+                        <p className="text-2xl font-bold text-white">{stats.total}</p>
+                      </div>
+                      <AlertCircle className="h-8 w-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Pending</p>
+                        <p className="text-2xl font-bold text-yellow-500">{stats.pending}</p>
+                      </div>
+                      <Clock className="h-8 w-8 text-yellow-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Completed</p>
+                        <p className="text-2xl font-bold text-green-500">{stats.completed}</p>
+                      </div>
+                      <CheckCircle className="h-8 w-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Active Workers</p>
+                        <p className="text-2xl font-bold text-blue-500">{stats.workers}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Notifications */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Recent Notifications</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {notifications.length === 0 ? (
+                      <p className="text-gray-400">No new notifications</p>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div key={notif.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                          <div>
+                            <p className="font-medium text-white">{notif.title}</p>
+                            <p className="text-sm text-gray-400">{notif.message}</p>
+                          </div>
+                          <span className="text-xs text-gray-500">{notif.time}</span>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <p className="text-lg font-medium">{shopName}</p>
-                  <p className="text-sm text-muted-foreground">Shop ID: {shopId}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === "requests" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Service Requests</h2>
+                <div className="flex items-center space-x-4">
+                  <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
+                    <SelectTrigger className="w-32 bg-gray-800 border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filters.sort} onValueChange={(value) => setFilters({...filters, sort: value})}>
+                    <SelectTrigger className="w-32 bg-gray-800 border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest First</SelectItem>
+                      <SelectItem value="oldest">Oldest First</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-              
-              <div className="bg-muted/50 border-2 border-dashed border-primary/30 rounded-lg p-8">
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                  Dashboard to display the statistics of completed service & employee performance
-                </p>
               </div>
-              
-              {/* Statistics Placeholder */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-                <div className="glass-effect border-primary/20 rounded-lg p-4 emergency-glow">
-                  <h3 className="font-semibold text-primary">Completed Services</h3>
-                  <p className="text-2xl font-bold text-foreground">24</p>
-                </div>
-                <div className="glass-effect border-primary/20 rounded-lg p-4 trust-glow">
-                  <h3 className="font-semibold text-secondary">Shop Workers</h3>
-                  <p className="text-2xl font-bold text-foreground">-</p>
-                </div>
-                <div className="glass-effect border-primary/20 rounded-lg p-4">
-                  <h3 className="font-semibold text-accent">Pending Requests</h3>
-                  <p className="text-2xl font-bold text-foreground">5</p>
-                </div>
+
+              <div className="space-y-4">
+                {filteredRequests.map((request) => (
+                  <Card key={request._id} className="bg-gray-800 border-gray-700">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <Avatar>
+                            <AvatarFallback className="bg-gray-700">
+                              {request.userId?.firstName?.[0]}{request.userId?.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-white">
+                              {request.userId?.firstName} {request.userId?.lastName}
+                            </p>
+                            <p className="text-sm text-gray-400">{request.userId?.email}</p>
+                          </div>
+                        </div>
+                        <Badge className={
+                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          request.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
+                          'bg-green-100 text-green-800'
+                        }>
+                          {request.status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-400">Location</p>
+                          <p className="text-white">{request.location}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-400">Urgency</p>
+                          <Badge className={
+                            request.urgency === 'high' ? 'bg-red-100 text-red-800' :
+                            request.urgency === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }>
+                            {request.urgency}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <p className="text-gray-300 mb-4">{request.message}</p>
+                      
+                      {request.status === 'pending' && (
+                        <div className="flex space-x-2">
+                          <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => updateRequestStatus(request._id, 'accepted')}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Accept
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => updateRequestStatus(request._id, 'rejected')}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
-        
-        {/* Shop Workers */}
-        {shopId && <ShopWorkers shopId={shopId} />}
+          )}
 
-        {/* Notification Panel (Screen 2) */}
-        {showNotificationPanel && (
-          <div className="absolute top-8 right-6 w-80 glass-effect border-primary/20 rounded-xl emergency-glow z-50">
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-foreground">Notifications</h3>
-                <Button
-                  onClick={() => setShowNotificationPanel(false)}
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+          {activeTab === "users" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">User Management</h2>
               
-              <div className="space-y-3">
-                <div className="glass-effect border-primary/20 rounded-lg p-3">
-                  <p className="text-sm text-foreground">
-                    <strong>New service request generated in your location Downtown.</strong>
-                    <br />
-                    <span className="text-primary underline cursor-pointer">Click here to view more</span>
-                  </p>
-                </div>
-                
-                <div className="glass-effect border-primary/20 rounded-lg p-3">
-                  <p className="text-sm text-foreground">
-                    Service completed at Mall Area by Worker #123
-                  </p>
-                </div>
-                
-                <div className="glass-effect border-primary/20 rounded-lg p-3">
-                  <p className="text-sm text-foreground">
-                    Payment received for Highway 101 service
-                  </p>
-                </div>
+              <div className="grid gap-4">
+                {users.map((user) => (
+                  <Card key={user._id} className="bg-gray-800 border-gray-700">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Avatar>
+                            <AvatarFallback className="bg-gray-700">
+                              {user.firstName?.[0]}{user.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-white">{user.firstName} {user.lastName}</p>
+                            <p className="text-sm text-gray-400">{user.email}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              {getRoleIcon(user.userType)}
+                              {getRoleBadge(user.userType)}
+                            </div>
+                          </div>
+                        </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
+                              Edit Role
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-gray-800 border-gray-700">
+                            <DialogHeader>
+                              <DialogTitle className="text-white">Edit User Role</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-gray-300">User</Label>
+                                <p className="text-white">{selectedUser?.firstName} {selectedUser?.lastName}</p>
+                              </div>
+                              <div>
+                                <Label className="text-gray-300">Current Role</Label>
+                                <p className="text-white">{selectedUser?.userType}</p>
+                              </div>
+                              <div>
+                                <Label className="text-gray-300">New Role</Label>
+                                <Select onValueChange={(value) => updateUserRole(selectedUser?._id, value)}>
+                                  <SelectTrigger className="bg-gray-700 border-gray-600">
+                                    <SelectValue placeholder="Select new role" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="admin">Admin/Workshop Owner</SelectItem>
+                                    <SelectItem value="worker">Worker</SelectItem>
+                                    <SelectItem value="user">User</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Annotation Arrows (Visual Indicators) */}
-        <div className="absolute top-4 right-96 hidden xl:block">
-          <div className="glass-effect border-accent/30 rounded-lg p-2 text-xs text-accent">
-            ← Screen 2: Notification Panel
-          </div>
-        </div>
-      </div>
+          {activeTab === "profile" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Profile Settings</h2>
+              
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-6 space-y-6">
+                  <div className="flex items-center space-x-6">
+                    <Avatar className="w-24 h-24">
+                      <AvatarImage src={profileData.profileImage} />
+                      <AvatarFallback className="bg-gray-700 text-2xl">
+                        {profileData.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Button variant="outline" className="border-gray-600">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Photo
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <Label className="text-gray-300">Full Name</Label>
+                      <Input 
+                        value={profileData.name}
+                        onChange={(e) => setProfileData({...profileData, name: e.target.value})}
+                        className="bg-gray-700 border-gray-600 text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Role</Label>
+                      <Select value={profileData.role} onValueChange={(value) => setProfileData({...profileData, role: value})}>
+                        <SelectTrigger className="bg-gray-700 border-gray-600">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin/Workshop Owner</SelectItem>
+                          <SelectItem value="worker">Worker</SelectItem>
+                          <SelectItem value="user">User</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Current Employer</Label>
+                      <Input 
+                        value={profileData.employer}
+                        onChange={(e) => setProfileData({...profileData, employer: e.target.value})}
+                        className="bg-gray-700 border-gray-600 text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-gray-300">Language</Label>
+                      <Select value={profileData.language} onValueChange={(value) => setProfileData({...profileData, language: value})}>
+                        <SelectTrigger className="bg-gray-700 border-gray-600">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
+                          <SelectItem value="fr">French</SelectItem>
+                          <SelectItem value="de">German</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <Button className="bg-green-600 hover:bg-green-700">
+                    Save Changes
+                  </Button>
+                </CardContent>
+              </Card>
 
-      {/* Workshop Status Explanation for Mobile */}
-      <div className="lg:hidden mx-6 mb-6">
-        <Card className="glass-effect border-primary/20">
-          <CardContent className="p-4">
-            <p className="text-sm text-foreground">
-              <strong>Open for requests:</strong> Ready to receive requests<br/>
-              <strong>Closed:</strong> Not accepting requests currently
-            </p>
-          </CardContent>
-        </Card>
+              {/* Work History */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <History className="h-5 w-5 mr-2" />
+                    Work History
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[1,2,3].map((i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                        <div>
+                          <p className="font-medium text-white">Service Request #{i}001</p>
+                          <p className="text-sm text-gray-400">Completed vehicle repair - Engine issue</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-green-500">Completed</p>
+                          <p className="text-xs text-gray-500">2 days ago</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === "hierarchy" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Organization Hierarchy</h2>
+              
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg">
+                      <Crown className="h-6 w-6 text-yellow-500" />
+                      <div>
+                        <p className="font-medium text-white">Admin Level</p>
+                        <p className="text-sm text-gray-400">Workshop Owners & System Administrators</p>
+                      </div>
+                      <Badge className="bg-yellow-100 text-yellow-800 ml-auto">
+                        {users.filter(u => u.userType === 'admin').length} users
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg">
+                      <Settings2 className="h-6 w-6 text-blue-500" />
+                      <div>
+                        <p className="font-medium text-white">Worker Level</p>
+                        <p className="text-sm text-gray-400">Field Workers & Technicians</p>
+                      </div>
+                      <Badge className="bg-blue-100 text-blue-800 ml-auto">
+                        {users.filter(u => u.userType === 'worker').length} users
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg">
+                      <User className="h-6 w-6 text-gray-500" />
+                      <div>
+                        <p className="font-medium text-white">User Level</p>
+                        <p className="text-sm text-gray-400">Service Requesters & Customers</p>
+                      </div>
+                      <Badge className="bg-gray-100 text-gray-800 ml-auto">
+                        {users.filter(u => u.userType === 'user').length} users
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
-}
+};
+
+export default AdminDashboard;
