@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { lazy, Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import FluidCursor from "@/components/FluidCursor";
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
@@ -14,7 +15,6 @@ const Signup = lazy(() => import("./pages/Signup"));
 const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const WorkerDashboard = lazy(() => import("./pages/WorkerDashboard"));
-const EnhancedLogin = lazy(() => import("./pages/EnhancedLogin"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal"));
 const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
@@ -82,18 +82,13 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <FluidCursor />
         <AuthProvider>
-          <BrowserRouter
-            future={{
-              v7_startTransition: true,
-              v7_relativeSplatPath: true
-            }}
-          >
+          <BrowserRouter>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-                <Route path="/enhanced-login" element={<PublicRoute><EnhancedLogin /></PublicRoute>} />
                 <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
                 <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -111,7 +106,6 @@ const App = () => (
                 <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
 
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
-                <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
