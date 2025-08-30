@@ -15,7 +15,8 @@ import {
   Phone,
   ArrowRight,
   Shield,
-  Zap
+  Zap,
+  ArrowLeft
 } from "lucide-react";
 
 const LoginPage = () => {
@@ -61,6 +62,11 @@ const LoginPage = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-md mx-auto">
+          <div className="mb-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
           <Card className="glass-effect border-2 border-primary/20 emergency-glow animate-scale-in">
             <CardHeader className="text-center space-y-4">
               <div className="w-16 h-16 gradient-hero rounded-full flex items-center justify-center mx-auto animate-pulse-glow">
