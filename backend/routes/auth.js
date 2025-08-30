@@ -287,6 +287,55 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Get all admins
+router.get('/admins', async (req, res) => {
+  try {
+    const admins = await User.find({ 
+      userType: 'admin',
+      isActive: true 
+    }).select('firstName lastName email phone profileImage shopName');
+
+    res.status(200).json(admins);
+  } catch (error) {
+    console.error('Error fetching admins:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get all users for admin management
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.find({
+      isActive: true
+    }).select('firstName lastName email phone userType shopName createdAt');
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update user role
+router.patch('/users/:userId/role', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.userType = role;
+    await user.save();
+
+    res.json({ message: 'User role updated successfully', user });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get Workers by Shop
 router.get('/shop/:shopId/workers', async (req, res) => {
   try {
@@ -366,6 +415,34 @@ router.post('/reset-password', async (req, res) => {
     await user.save();
 
     res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update user profile
+router.patch('/profile/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, employer, language, profileImage } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (name) {
+      const [firstName, ...lastNameParts] = name.split(' ');
+      user.firstName = firstName;
+      user.lastName = lastNameParts.join(' ');
+    }
+    if (employer) user.shopName = employer;
+    if (language) user.language = language;
+    if (profileImage) user.profileImage = profileImage;
+
+    await user.save();
+
+    res.json({ message: 'Profile updated successfully', user });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
