@@ -120,9 +120,133 @@ router.get('/me', authenticate, async (req, res) => {
       lastName: req.user.lastName,
       email: req.user.email,
       phone: req.user.phone,
-      userType: req.user.userType
+      userType: req.user.userType,
+      currentEmployer: req.user.currentEmployer,
+      language: req.user.language,
+      profileImage: req.user.profileImage,
+      workHistory: req.user.workHistory
     }
   });
+});
+
+// Update user profile
+router.put('/profile', authenticate, [
+  body('firstName').optional().trim().notEmpty().withMessage('First name cannot be empty'),
+  body('lastName').optional().trim().notEmpty().withMessage('Last name cannot be empty'),
+  body('currentEmployer').optional().trim(),
+  body('language').optional().isIn(['en', 'es', 'fr', 'de']).withMessage('Invalid language'),
+  body('profileImage').optional().isString()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array() });
+    }
+
+    const { firstName, lastName, currentEmployer, language, profileImage, workHistory } = req.body;
+    
+    const updateData = {};
+    if (firstName) updateData.firstName = firstName;
+    if (lastName) updateData.lastName = lastName;
+    if (currentEmployer !== undefined) updateData.currentEmployer = currentEmployer;
+    if (language) updateData.language = language;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+    if (workHistory) updateData.workHistory = workHistory;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: updatedUser._id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        userType: updatedUser.userType,
+        currentEmployer: updatedUser.currentEmployer,
+        language: updatedUser.language,
+        profileImage: updatedUser.profileImage,
+        workHistory: updatedUser.workHistory
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all users (Admin only)
+router.get('/users', authenticate, async (req, res) => {
+  try {
+    if (req.user.userType !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const users = await User.find({}, '-password').sort({ createdAt: -1 });
+    
+    res.json({
+      users: users.map(user => ({
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        userType: user.userType,
+        currentEmployer: user.currentEmployer,
+        language: user.language,
+        isActive: user.isActive,
+        createdAt: user.createdAt
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user role (Admin only)
+router.put('/users/:userId/role', authenticate, [
+  body('userType').isIn(['user', 'worker', 'admin']).withMessage('Invalid user type')
+], async (req, res) => {
+  try {
+    if (req.user.userType !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg });
+    }
+
+    const { userId } = req.params;
+    const { userType } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { userType },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'User role updated successfully',
+      user: {
+        id: updatedUser._id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        userType: updatedUser.userType
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Worker-specific login
