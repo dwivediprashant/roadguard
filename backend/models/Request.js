@@ -31,7 +31,7 @@ const requestSchema = new mongoose.Schema({
   },
   location: {
     type: String,
-    required: true
+    required: false
   },
   urgency: {
     type: String,

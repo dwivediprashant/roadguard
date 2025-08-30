@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import SimpleMap from "@/components/SimpleMap";
 import { 
   Car, MapPin, ArrowLeft, User, Building2, Phone, Send, Clock, Wrench, Users, AlertCircle,
@@ -60,6 +61,7 @@ interface ServiceRequest {
 const UserDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Navigation state
   const [currentView, setCurrentView] = useState<'home' | 'search' | 'booking' | 'tracking' | 'history'>('home');
@@ -123,8 +125,23 @@ const UserDashboard = () => {
 
   const fetchWorkshops = async () => {
     try {
+      console.log('Fetching workshops...');
       const response = await fetch('http://localhost:3001/api/requests/shops');
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Raw workshop data:', data);
+      
+      if (!Array.isArray(data)) {
+        console.error('Expected array but got:', typeof data);
+        setWorkshops([]);
+        return;
+      }
+      
       const enhancedData = data.map((shop: any) => ({
         ...shop,
         rating: Math.random() * 2 + 3,
@@ -135,9 +152,12 @@ const UserDashboard = () => {
         location: { lat: userLocation.lat + (Math.random() - 0.5) * 0.1, lng: userLocation.lng + (Math.random() - 0.5) * 0.1 },
         reviews: []
       }));
+      
+      console.log('Enhanced workshop data:', enhancedData);
       setWorkshops(enhancedData);
     } catch (error) {
-      console.error('Failed to fetch workshops');
+      console.error('Failed to fetch workshops:', error);
+      setWorkshops([]);
     } finally {
       setLoading(false);
     }
@@ -168,14 +188,17 @@ const UserDashboard = () => {
       return;
     }
 
+    console.log('Selected workshop:', selectedWorkshop);
+    console.log('Admin data:', selectedWorkshop?.admin);
+
     try {
-      const response = await fetch('http://localhost:3001/api/service-requests', {
+      const response = await fetch('http://localhost:3001/api/requests/service-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
           workshopId: selectedWorkshop?.shopId,
-          adminId: selectedWorkshop?.admin._id,
+          adminId: selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id,
           userName: bookingForm.userName || `${user?.firstName} ${user?.lastName}`,
           serviceName: bookingForm.description,
           serviceType: bookingForm.serviceType,
@@ -191,12 +214,17 @@ const UserDashboard = () => {
 
       if (response.ok) {
         const savedRequest = await response.json();
-        toast({ title: "Success", description: "Request sent to admin successfully!" });
+        toast({ 
+          title: "Success", 
+          description: "Request sent to admin successfully! Redirecting to My Requests..."
+        });
         
-        setServiceRequests(prev => [savedRequest, ...prev]);
-        setCurrentView('tracking');
-        setBreadcrumbs(['Dashboard', 'Service Tracking']);
         resetBookingForm();
+        
+        // Redirect to My Requests page
+        setTimeout(() => {
+          navigate('/my-requests');
+        }, 1500);
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to submit request", variant: "destructive" });
@@ -237,6 +265,13 @@ const UserDashboard = () => {
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon">
               <Bell className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate('/my-requests')}
+            >
+              My Requests
             </Button>
             <div className="flex items-center space-x-2">
               <User className="w-4 h-4" />
@@ -733,6 +768,23 @@ const UserDashboard = () => {
         return (
           <div className="space-y-6">
             {renderSearchFilters()}
+            
+            {/* Debug Info */}
+            <Card className="mb-4 bg-yellow-50 border-yellow-200">
+              <CardContent className="p-4">
+                <p className="text-sm">
+                  <strong>Debug:</strong> Loading: {loading.toString()}, 
+                  Total Workshops: {workshops.length}, 
+                  Filtered: {filteredWorkshops.length}
+                </p>
+                {workshops.length > 0 && (
+                  <p className="text-xs mt-1">
+                    First workshop: {workshops[0]?.shopName || 'No name'}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            
             {viewMode === 'map' ? (
               <Card>
                 <CardContent className="p-6">

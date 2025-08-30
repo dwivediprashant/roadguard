@@ -2,6 +2,7 @@ import express from 'express';
 import Request from '../models/Request.js';
 import User from '../models/User.js';
 import Shop from '../models/Shop.js';
+import Notification from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -70,7 +71,26 @@ router.get('/admin/:adminId', async (req, res) => {
       .populate('mechanicId', 'firstName lastName email phone')
       .sort({ createdAt: -1 });
 
-    res.json(requests);
+    const adminRequests = requests.map(request => ({
+      id: request._id,
+      userName: `${request.userId.firstName} ${request.userId.lastName}`,
+      userEmail: request.userId.email,
+      userPhone: request.userId.phone,
+      serviceName: request.message,
+      serviceType: request.serviceType,
+      status: request.status,
+      urgency: request.urgency,
+      location: request.location,
+      preferredDate: request.preferredDate,
+      preferredTime: request.preferredTime,
+      issueDescription: request.issueDescription,
+      assignedWorker: request.mechanicId ? `${request.mechanicId.firstName} ${request.mechanicId.lastName}` : null,
+      assignedWorkerId: request.mechanicId?._id,
+      createdAt: request.createdAt,
+      date: request.createdAt.toLocaleDateString()
+    }));
+
+    res.json({ requests: adminRequests });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -98,6 +118,8 @@ router.patch('/:requestId/status', async (req, res) => {
 // Create service request (for UserDashboard)
 router.post('/service-requests', async (req, res) => {
   try {
+    console.log('Received service request:', req.body);
+    
     const {
       userId,
       workshopId,
@@ -114,13 +136,22 @@ router.post('/service-requests', async (req, res) => {
       status = 'pending'
     } = req.body;
 
+    // Validate required fields
+    if (!userId || !adminId || !workshopId || !serviceName) {
+      return res.status(400).json({ 
+        message: 'Missing required fields', 
+        required: ['userId', 'adminId', 'workshopId', 'serviceName'],
+        received: { userId, adminId, workshopId, serviceName }
+      });
+    }
+
     const request = new Request({
       userId,
       adminId,
-      mechanicId: preferredWorkerId,
+      mechanicId: preferredWorkerId || null,
       shopId: workshopId,
       message: serviceName,
-      location,
+      location: location || 'Not specified',
       urgency: 'medium',
       status,
       // Additional fields for service requests
@@ -132,7 +163,30 @@ router.post('/service-requests', async (req, res) => {
       chatWithAgent
     });
 
+    console.log('Saving request:', request);
     await request.save();
+    console.log('Request saved successfully');
+
+    // Create notification for admin
+    const notification = new Notification({
+      userId: adminId,
+      type: 'request_received',
+      title: 'New Service Request',
+      message: `New ${serviceType} request from ${userName || 'User'}`,
+      requestId: request._id
+    });
+    await notification.save();
+
+    // Emit real-time notification to admin
+    const io = req.app.get('io');
+    io.to(`user_${adminId}`).emit('new_notification', {
+      id: notification._id,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      requestId: request._id,
+      createdAt: notification.createdAt
+    });
 
     // Populate the response with workshop name
     const shop = await Shop.findOne({ shopId: workshopId });
@@ -149,6 +203,7 @@ router.post('/service-requests', async (req, res) => {
     res.status(201).json(responseData);
   } catch (error) {
     console.error('Service request creation error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -174,7 +229,10 @@ router.get('/service-requests/user/:userId', async (req, res) => {
           date: request.createdAt.toLocaleDateString(),
           adminId: request.adminId?._id,
           assignedWorker: request.mechanicId ? `${request.mechanicId.firstName} ${request.mechanicId.lastName}` : null,
-          assignedWorkerId: request.mechanicId?._id
+          assignedWorkerId: request.mechanicId?._id,
+          location: request.location,
+          urgency: request.urgency,
+          createdAt: request.createdAt
         };
       })
     );
@@ -182,6 +240,45 @@ router.get('/service-requests/user/:userId', async (req, res) => {
     res.json(serviceRequests);
   } catch (error) {
     console.error('Get service requests error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get all requests for a user (My Requests page)
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const requests = await Request.find({ userId })
+      .populate('adminId', 'firstName lastName shopName')
+      .populate('mechanicId', 'firstName lastName')
+      .sort({ createdAt: -1 });
+
+    const userRequests = await Promise.all(
+      requests.map(async (request) => {
+        const shop = await Shop.findOne({ shopId: request.shopId });
+        return {
+          id: request._id,
+          workshopName: shop?.shopName || 'Unknown Workshop',
+          serviceName: request.message,
+          serviceType: request.serviceType,
+          status: request.status,
+          urgency: request.urgency,
+          location: request.location,
+          preferredDate: request.preferredDate,
+          preferredTime: request.preferredTime,
+          issueDescription: request.issueDescription,
+          date: request.createdAt.toLocaleDateString(),
+          createdAt: request.createdAt,
+          adminName: request.adminId ? `${request.adminId.firstName} ${request.adminId.lastName}` : null,
+          assignedWorker: request.mechanicId ? `${request.mechanicId.firstName} ${request.mechanicId.lastName}` : null
+        };
+      })
+    );
+
+    res.json({ requests: userRequests });
+  } catch (error) {
+    console.error('Get user requests error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

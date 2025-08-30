@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/contexts/NotificationContext";
 import AdminServiceRequests from "@/components/AdminServiceRequests";
 import { 
   Users, Settings, Bell, Search, Filter, Calendar, MapPin, Clock, 
@@ -21,6 +22,7 @@ import {
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const { notifications, unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
@@ -188,9 +190,9 @@ const AdminDashboard = () => {
             <div className="relative">
               <Button variant="ghost" size="sm">
                 <Bell className="h-4 w-4" />
-                {notifications.length > 0 && (
+                {unreadCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 bg-red-500 text-xs px-1">
-                    {notifications.length}
+                    {unreadCount}
                   </Badge>
                 )}
               </Button>

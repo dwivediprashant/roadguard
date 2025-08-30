@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   User, Clock, MapPin, Phone, Wrench, CheckCircle, 
   Eye, UserCheck, Calendar, DollarSign
@@ -42,6 +43,7 @@ interface Worker {
 }
 
 const AdminServiceRequests = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
@@ -49,16 +51,20 @@ const AdminServiceRequests = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchServiceRequests();
-    fetchWorkers();
-  }, []);
+    if (user?.id) {
+      fetchServiceRequests();
+      fetchWorkers();
+    }
+  }, [user?.id]);
 
   const fetchServiceRequests = async () => {
+    if (!user?.id) return;
+    
     try {
-      const response = await fetch('http://localhost:3001/api/service-requests/admin');
+      const response = await fetch(`http://localhost:3001/api/requests/admin/${user.id}`);
       if (response.ok) {
         const data = await response.json();
-        setRequests(data);
+        setRequests(data.requests || data);
       }
     } catch (error) {
       console.error('Failed to fetch service requests');
@@ -81,10 +87,10 @@ const AdminServiceRequests = () => {
 
   const assignWorker = async (requestId: string, workerId: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/service-requests/${requestId}/assign`, {
-        method: 'PUT',
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId })
+        body: JSON.stringify({ status: 'worker-assigned', workerId })
       });
 
       if (response.ok) {
@@ -98,8 +104,8 @@ const AdminServiceRequests = () => {
 
   const updateRequestStatus = async (requestId: string, status: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/service-requests/${requestId}/status`, {
-        method: 'PUT',
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
