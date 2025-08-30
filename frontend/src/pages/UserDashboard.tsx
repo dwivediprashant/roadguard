@@ -13,7 +13,8 @@ import {
   Navigation,
   Wrench,
   Shield,
-  User
+  User,
+  ArrowLeft
 } from "lucide-react";
 
 const UserDashboard = () => {
@@ -56,6 +57,9 @@ const UserDashboard = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="icon" onClick={() => window.location.href = '/'}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                 <Car className="w-6 h-6 text-primary-foreground" />
               </div>

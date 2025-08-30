@@ -15,7 +15,8 @@ import {
   Wrench,
   Shield,
   Star,
-  Users
+  Users,
+  ArrowLeft
 } from "lucide-react";
 
 const WorkerLogin = () => {
@@ -93,6 +94,11 @@ const WorkerLogin = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-md mx-auto">
+          <div className="mb-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
           <Card className="border-2 border-secondary/20 shadow-2xl">
             <CardHeader className="text-center space-y-4">
               <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto">
