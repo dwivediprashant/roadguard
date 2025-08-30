@@ -70,6 +70,7 @@ app.use('/api/worker', workerRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/workshops', workshopRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api', requestRoutes); // This handles /api/service-requests routes
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/test', testRoutes);
@@ -129,9 +130,10 @@ server.listen(PORT, () => {
   console.log(`✅ Backend server running on port ${PORT}`);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.log(`Port ${PORT} is busy, trying ${PORT + 1}`);
-    server.listen(PORT + 1, () => {
-      console.log(`✅ Backend server running on port ${PORT + 1}`);
+    const newPort = parseInt(PORT) + 1;
+    console.log(`Port ${PORT} is busy, trying ${newPort}`);
+    server.listen(newPort, () => {
+      console.log(`✅ Backend server running on port ${newPort}`);
     });
   }
 });

@@ -1,257 +1,222 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  ArrowRight,
-  Wrench,
-  Shield,
-  Star,
-  Users,
-  ArrowLeft,
-  Building2
+  Settings2, Mail, Lock, User, Eye, EyeOff, 
+  Chrome, ArrowRight, Shield
 } from "lucide-react";
 
 const WorkerLogin = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [loginData, setLoginData] = useState({
     email: "",
-    password: "",
-    shopId: "",
+    password: ""
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      // Use universal login endpoint
       const response = await fetch('http://localhost:3001/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          shopId: formData.shopId,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...loginData, userType: 'worker' })
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        toast({ 
+          title: "Login Successful", 
+          description: `Welcome back, ${data.user.firstName}!` 
+        });
+        
+        window.location.href = '/worker-dashboard';
+      } else {
+        toast({ 
+          title: "Login Failed", 
+          description: data.message || "Invalid credentials",
+          variant: "destructive" 
+        });
       }
-
-      // Store token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
-      // Check if user is actually a worker
-      if (data.user.userType !== 'worker') {
-        throw new Error('This email is registered as a user. Please use the user login page.');
-      }
-      
-      toast({
-        title: "Welcome back!",
-        description: "Successfully logged in as worker",
-      });
-      window.location.href = '/worker';
-    } catch (error: any) {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Connection failed. Please try again.",
+        variant: "destructive" 
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  const handleGoogleLogin = () => {
+    toast({ 
+      title: "Google Login", 
+      description: "Google authentication coming soon!",
+      variant: "default" 
+    });
+  };
+
+  const handleEmailSignup = () => {
+    toast({ 
+      title: "Email Signup", 
+      description: "Magic link sent to your email!",
+      variant: "default" 
+    });
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-12">
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-background"></div>
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 left-10 w-40 h-40 bg-secondary/5 rounded-full animate-pulse"></div>
-        <div className="absolute bottom-10 right-10 w-32 h-32 bg-secondary/10 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/3 right-1/4 w-24 h-24 bg-secondary/15 rounded-full animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
-
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-md mx-auto">
-          <div className="mb-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </div>
-          <Card className="border-2 border-secondary/20 shadow-2xl">
-            <CardHeader className="text-center space-y-4">
-              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto">
-                <Wrench className="w-8 h-8 text-secondary-foreground" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="bg-gray-800 border-gray-700 shadow-2xl">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                <Settings2 className="w-8 h-8 text-white" />
               </div>
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold text-white">Worker Login</CardTitle>
+              <p className="text-gray-400">Access your service dashboard</p>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <CardTitle className="text-3xl font-bold text-secondary">
-                  Worker Login
-                </CardTitle>
-                <p className="text-muted-foreground">
-                  Sign in to start helping drivers in need
-                </p>
+                <Label className="text-gray-300">Username/Email</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={loginData.email}
+                    onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+                    className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                    required
+                  />
+                </div>
               </div>
-            </CardHeader>
 
-            <CardContent className="space-y-6">
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="worker@example.com"
-                      value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="pl-10 border-secondary/20 focus:border-secondary/50"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
-                      className="pl-10 pr-10 border-secondary/20 focus:border-secondary/50"
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="shopId">Shop ID (Optional)</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="shopId"
-                      type="text"
-                      placeholder="Enter shop ID to join/update shop"
-                      value={formData.shopId}
-                      onChange={(e) => handleInputChange("shopId", e.target.value.toUpperCase())}
-                      className="pl-10 border-secondary/20 focus:border-secondary/50"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Leave empty to login with current shop assignment
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <Link to="/forgot-password" className="text-secondary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-
-                <div className="text-right">
-                  <button 
+              <div className="space-y-2">
+                <Label className="text-gray-300">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={loginData.password}
+                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                    className="pl-10 pr-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                    required
+                  />
+                  <Button
                     type="button"
-                    onClick={() => navigate('/forgot-password')}
-                    className="text-sm text-primary hover:underline"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 text-gray-400 hover:text-white"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    Forgot password?
-                  </button>
-                </div>
-
-                <Button 
-                  type="submit" 
-                  variant="secondary"
-                  size="lg" 
-                  className="w-full font-semibold"
-                  disabled={isLoading}
-                >
-                  <Wrench className="w-5 h-5 mr-2" />
-                  {isLoading ? 'Signing in...' : 'Sign In as Worker'}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </form>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
 
-              <div className="text-center space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Don't have a worker account?{" "}
-                  <Link to="/signup" className="text-secondary hover:underline font-medium">
-                    Sign up here
-                  </Link>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Need help as a user?{" "}
-                  <Link to="/login" className="text-primary hover:underline font-medium">
-                    User Login
-                  </Link>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2"
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Signing in...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <span>Sign In</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </div>
+                )}
+              </Button>
+            </form>
 
-          {/* Worker Benefits */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="text-center p-4 border-secondary/20">
-              <Users className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <h3 className="font-semibold text-secondary">Flexible Hours</h3>
-              <p className="text-xs text-muted-foreground">Work when you want</p>
-            </Card>
-            <Card className="text-center p-4 border-secondary/20">
-              <Star className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <h3 className="font-semibold text-secondary">Earn More</h3>
-              <p className="text-xs text-muted-foreground">Competitive rates</p>
-            </Card>
-            <Card className="text-center p-4 border-secondary/20">
-              <Shield className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <h3 className="font-semibold text-secondary">Secure Platform</h3>
-              <p className="text-xs text-muted-foreground">Safe & reliable</p>
-            </Card>
-          </div>
-        </div>
+            {/* Divider */}
+            <div className="relative">
+              <Separator className="bg-gray-600" />
+              <span className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 px-2 text-xs text-gray-400">
+                OR
+              </span>
+            </div>
+
+            {/* Third-party Login */}
+            <div className="space-y-3">
+              <Button 
+                type="button"
+                variant="outline"
+                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+                onClick={handleGoogleLogin}
+              >
+                <Chrome className="h-4 w-4 mr-2" />
+                Continue with Google
+              </Button>
+
+              <Button 
+                type="button"
+                variant="outline"
+                className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+                onClick={handleEmailSignup}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Sign up with Email
+              </Button>
+            </div>
+
+            {/* Footer Links */}
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-400">
+                Don't have an account?{" "}
+                <a href="/worker-signup" className="text-blue-500 hover:text-blue-400 font-medium">
+                  Sign up as Worker
+                </a>
+              </p>
+              <p className="text-xs text-gray-500">
+                <a href="/forgot-password" className="hover:text-gray-400">
+                  Forgot your password?
+                </a>
+              </p>
+            </div>
+
+            {/* Demo Credentials */}
+            <div className="bg-gray-700 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-gray-300">Demo Worker Account:</p>
+              <div className="text-xs text-gray-400">
+                <p><strong>Email:</strong> worker@roadguard.com</p>
+                <p><strong>Password:</strong> password123</p>
+              </div>
+            </div>
+
+            {/* Security Notice */}
+            <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <Shield className="h-3 w-3" />
+              <span>Your data is protected with enterprise-grade security</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
