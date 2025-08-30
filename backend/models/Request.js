@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const requestSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   customer: { type: String, required: true },
   service: { type: String, required: true },
   location: { type: String, required: true },

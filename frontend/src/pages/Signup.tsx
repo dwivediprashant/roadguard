@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Eye, 
   EyeOff, 
@@ -21,6 +23,7 @@ import {
 const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -32,9 +35,54 @@ const SignupPage = () => {
     agreeToTerms: false,
     subscribeNewsletter: false
   });
+  const { register } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password mismatch",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.agreeToTerms) {
+      toast({
+        title: "Terms required",
+        description: "Please agree to the terms and conditions",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { confirmPassword, ...userData } = formData;
+      await register(userData);
+      toast({
+        title: "Registration successful",
+        description: "Welcome to RoadGuard!",
+      });
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -87,7 +135,7 @@ const SignupPage = () => {
                 </Button>
               </div>
 
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 {/* Name Fields */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -233,10 +281,10 @@ const SignupPage = () => {
                   variant={formData.userType === "driver" ? "emergency" : "trust"}
                   size="lg" 
                   className="w-full transition-bounce hover:scale-105"
-                  disabled={!formData.agreeToTerms}
+                  disabled={!formData.agreeToTerms || isLoading}
                 >
                   <CheckCircle className="w-5 h-5 mr-2" />
-                  Create Account
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </form>
