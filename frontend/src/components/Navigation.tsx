@@ -25,6 +25,16 @@ export const Navigation = () => {
             <ThemeToggle />
             
             <div className="hidden sm:flex items-center space-x-2">
+              <Link to="/admin">
+                <Button variant="ghost" size="sm">
+                  Admin
+                </Button>
+              </Link>
+              <Link to="/worker">
+                <Button variant="ghost" size="sm">
+                  Worker
+                </Button>
+              </Link>
               <Link to="/login">
                 <Button variant="ghost" className="transition-smooth hover:scale-105">
                   <LogIn className="w-4 h-4 mr-2" />
