@@ -14,7 +14,7 @@ const requestSchema = new mongoose.Schema({
   mechanicId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   shopId: {
     type: String,
@@ -26,7 +26,7 @@ const requestSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'rejected', 'completed'],
+    enum: ['pending', 'admin-reviewing', 'worker-assigned', 'in-progress', 'completed', 'done', 'accepted', 'rejected'],
     default: 'pending'
   },
   location: {
@@ -37,6 +37,31 @@ const requestSchema = new mongoose.Schema({
     type: String,
     enum: ['low', 'medium', 'high'],
     default: 'medium'
+  },
+  // Additional fields for service requests
+  userName: {
+    type: String,
+    required: false
+  },
+  serviceType: {
+    type: String,
+    required: false
+  },
+  preferredDate: {
+    type: String,
+    required: false
+  },
+  preferredTime: {
+    type: String,
+    required: false
+  },
+  issueDescription: {
+    type: String,
+    required: false
+  },
+  chatWithAgent: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

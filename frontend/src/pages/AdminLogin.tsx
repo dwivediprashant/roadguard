@@ -48,6 +48,7 @@ const AdminLogin = () => {
         throw new Error('Access denied. Admin credentials required.');
       }
 
+      // Update AuthContext
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       if (data.shopId) {
@@ -58,7 +59,9 @@ const AdminLogin = () => {
         title: "Admin Login successful",
         description: "Welcome to Admin Dashboard!",
       });
-      navigate('/admin-dashboard');
+      
+      // Force page reload to update AuthContext
+      window.location.href = '/admin-dashboard';
     } catch (error: any) {
       toast({
         title: "Admin Login failed",

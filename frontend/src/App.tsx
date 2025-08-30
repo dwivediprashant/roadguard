@@ -66,14 +66,14 @@ const DashboardRoute = () => {
   }
   
   if (user?.userType === 'worker') {
-    return <WorkerPortal />;
+    return <WorkerDashboard />;
   }
   
   if (user?.userType === 'user') {
-    return <WorkshopDashboard />;
+    return <UserDashboard />;
   }
   
-  return <WorkshopDashboard />;
+  return <UserDashboard />;
 };
 
 const App = () => (
@@ -106,6 +106,7 @@ const App = () => (
                 <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
 
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
