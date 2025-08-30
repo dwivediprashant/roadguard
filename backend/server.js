@@ -70,13 +70,10 @@ app.use('/api/worker', workerRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/workshops', workshopRoutes);
 app.use('/api/requests', requestRoutes);
-<<<<<<< HEAD
 app.use('/api', requestRoutes); // This handles /api/service-requests routes
-=======
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/test', testRoutes);
->>>>>>> 732e1ec886e986c91dcdef1ce21b358df9885205
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'RoadGuard API is running' });
@@ -133,16 +130,10 @@ server.listen(PORT, () => {
   console.log(`✅ Backend server running on port ${PORT}`);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-<<<<<<< HEAD
     const newPort = parseInt(PORT) + 1;
     console.log(`Port ${PORT} is busy, trying ${newPort}`);
-    app.listen(newPort, () => {
+    server.listen(newPort, () => {
       console.log(`✅ Backend server running on port ${newPort}`);
-=======
-    console.log(`Port ${PORT} is busy, trying ${PORT + 1}`);
-    server.listen(PORT + 1, () => {
-      console.log(`✅ Backend server running on port ${PORT + 1}`);
->>>>>>> 732e1ec886e986c91dcdef1ce21b358df9885205
     });
   }
 });
