@@ -41,6 +41,12 @@ const userSchema = new mongoose.Schema({
   subscribeNewsletter: {
     type: Boolean,
     default: false
+  },
+  resetPasswordOTP: {
+    type: String
+  },
+  resetPasswordExpiry: {
+    type: Date
   }
 }, {
   timestamps: true

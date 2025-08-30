@@ -163,6 +163,16 @@ const WorkerLogin = () => {
                   </Link>
                 </div>
 
+                <div className="text-right">
+                  <button 
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
                 <Button 
                   type="submit" 
                   variant="secondary"

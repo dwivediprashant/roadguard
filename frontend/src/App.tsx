@@ -19,6 +19,7 @@ const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
 const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -83,6 +84,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                 <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/worker-login" element={<WorkerLogin />} />

@@ -41,6 +41,9 @@ export const authAPI = {
   workerLogin: (credentials: any) => api.post('/auth/worker-login', credentials),
   userLogin: (credentials: any) => api.post('/auth/user-login', credentials),
   getCurrentUser: () => api.get('/auth/me'),
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  verifyOTP: (email: string, otp: string) => api.post('/auth/verify-otp', { email, otp }),
+  resetPassword: (email: string, otp: string, newPassword: string) => api.post('/auth/reset-password', { email, otp, newPassword }),
 };
 
 export const workerAPI = {
