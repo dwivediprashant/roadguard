@@ -41,7 +41,38 @@ const userSchema = new mongoose.Schema({
   subscribeNewsletter: {
     type: Boolean,
     default: false
+  },
+// <<<<<<< HEAD
+  resetPasswordOTP: {
+    type: String
+  },
+  resetPasswordExpiry: {
+    type: Date
   }
+,
+  // Profile fields
+  currentEmployer: {
+    type: String,
+    default: 'RoadGuard Services'
+  },
+  language: {
+    type: String,
+    enum: ['en', 'es', 'fr', 'de'],
+    default: 'en'
+  },
+  profileImage: {
+    type: String,
+    default: null
+  },
+  workHistory: [{
+    position: String,
+    company: String,
+    startDate: String,
+    endDate: String,
+    description: String,
+    isCurrent: { type: Boolean, default: false }
+  }]
+
 }, {
   timestamps: true
 });

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Menu, MapPin, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "react-router-dom";
@@ -66,13 +68,34 @@ export const Navigation = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-border/50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 transition-smooth hover:scale-105">
-            <div className="w-10 h-10 gradient-hero rounded-lg flex items-center justify-center shimmer">
-              <MapPin className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">RoadGuard</span>
-          </Link>
+          {/* Logo & User Info */}
+          <div className="flex items-center space-x-4">
+            <Link to="/" className="flex items-center space-x-2 transition-smooth hover:scale-105">
+              <div className="w-10 h-10 gradient-hero rounded-lg flex items-center justify-center shimmer">
+                <MapPin className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold text-foreground">RoadGuard</span>
+            </Link>
+            
+            {user && (
+              <div className="flex items-center space-x-3 ml-6">
+                <Link to="/profile" className="flex items-center space-x-2 hover:opacity-80 transition-smooth">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={user.profileImage} />
+                    <AvatarFallback className="text-xs bg-primary/10">
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden md:block">
+                    <p className="text-sm font-medium text-foreground">{user.firstName} {user.lastName}</p>
+                  </div>
+                </Link>
+                <Badge variant="outline" className="hidden sm:inline-flex">
+                  {user.userType === 'admin' ? 'Admin' : user.userType === 'worker' ? 'Worker' : 'User'}
+                </Badge>
+              </div>
+            )}
+          </div>
 
           {/* Auth & Mobile Menu */}
           <div className="flex items-center space-x-4">
