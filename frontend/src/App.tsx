@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { lazy, Suspense } from "react";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import FluidCursor from "@/components/FluidCursor";
@@ -19,6 +20,8 @@ const WorkerPortal = lazy(() => import("./pages/WorkerPortal"));
 const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
 const UserDashboard = lazy(() => import("./pages/UserDashboard"));
+const MyRequests = lazy(() => import("./pages/MyRequests"));
+const WorkerTasks = lazy(() => import("./pages/WorkerTasks"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminSignup = lazy(() => import("./pages/AdminSignup"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
@@ -84,7 +87,8 @@ const App = () => (
         <Sonner />
         <FluidCursor />
         <AuthProvider>
-          <BrowserRouter>
+          <NotificationProvider>
+            <BrowserRouter>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -104,13 +108,16 @@ const App = () => (
                 <Route path="/worker" element={<ProtectedRoute><WorkerPortal /></ProtectedRoute>} />
                 <Route path="/worker/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
                 <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
+                <Route path="/worker-tasks" element={<ProtectedRoute><WorkerTasks /></ProtectedRoute>} />
 
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                <Route path="/my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
+            </BrowserRouter>
+          </NotificationProvider>
         </AuthProvider>
       </TooltipProvider>
     </ThemeProvider>

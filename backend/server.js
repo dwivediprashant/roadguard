@@ -13,6 +13,7 @@ import workshopRoutes from './routes/workshops.js';
 import requestRoutes from './routes/requests.js';
 import taskRoutes from './routes/tasks.js';
 import notificationRoutes from './routes/notifications.js';
+import workersRoutes from './routes/workers.js';
 import testRoutes from './routes/test.js';
 import { authenticate } from './middleware/auth.js';
 import { authenticateUser } from './middleware/workerAuth.js';
@@ -35,7 +36,7 @@ app.set('io', io);
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
@@ -56,11 +57,20 @@ io.on('connection', (socket) => {
 
   socket.on('join', (userId) => {
     socket.join(`user_${userId}`);
-    console.log(`User ${userId} joined their room`);
+    console.log(`User ${userId} joined room user_${userId}`);
+    console.log('Socket rooms:', socket.rooms);
+    
+    // Send confirmation back to client
+    socket.emit('joined_room', { userId, room: `user_${userId}` });
   });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+  });
+  
+  // Debug listener
+  socket.on('debug_notification', (data) => {
+    console.log('Debug notification received:', data);
   });
 });
 
@@ -73,6 +83,7 @@ app.use('/api/requests', requestRoutes);
 app.use('/api', requestRoutes); // This handles /api/service-requests routes
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/workers', workersRoutes);
 app.use('/api/test', testRoutes);
 
 app.get('/api/health', (req, res) => {

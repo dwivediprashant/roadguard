@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   User, Clock, MapPin, Phone, Wrench, CheckCircle, 
   Eye, UserCheck, Calendar, DollarSign
 } from "lucide-react";
 
 interface ServiceRequest {
-  _id: string;
+  id: string;
+  _id?: string;
   userId: string;
   userName: string;
   serviceName: string;
@@ -20,7 +22,7 @@ interface ServiceRequest {
   preferredTime: string;
   location: string;
   issueDescription: string;
-  quotation: {
+  quotation?: {
     serviceCharges: number;
     variableCosts: number;
     sparePartsCosts: number;
@@ -42,23 +44,56 @@ interface Worker {
 }
 
 const AdminServiceRequests = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [onlineWorkers, setOnlineWorkers] = useState<string[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [requestToAssign, setRequestToAssign] = useState<ServiceRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchServiceRequests();
-    fetchWorkers();
-  }, []);
+    if (user?.id) {
+      fetchServiceRequests();
+      fetchWorkers();
+      fetchOnlineWorkers();
+      
+      // Poll for online workers every 30 seconds
+      const interval = setInterval(fetchOnlineWorkers, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.id]);
 
-  const fetchServiceRequests = async () => {
+  const fetchOnlineWorkers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/service-requests/admin');
+      console.log('Fetching logged-in workers...');
+      const response = await fetch('http://localhost:3001/api/workers/logged-in');
+      console.log('Logged-in workers response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setRequests(data);
+        console.log('Logged-in workers response:', data);
+        const loggedInWorkers = data.workers || [];
+        setOnlineWorkers(loggedInWorkers.map(w => w._id));
+        console.log('Set logged-in worker IDs:', loggedInWorkers.map(w => w._id));
+      } else {
+        console.error('Failed to fetch logged-in workers:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to fetch logged-in workers:', error);
+    }
+  };
+
+  const fetchServiceRequests = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch(`http://localhost:3001/api/requests/admin/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setRequests(data.requests || data);
       }
     } catch (error) {
       console.error('Failed to fetch service requests');
@@ -69,37 +104,61 @@ const AdminServiceRequests = () => {
 
   const fetchWorkers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/workers');
+      console.log('Fetching all workers from logged-in endpoint...');
+      const response = await fetch('http://localhost:3001/api/workers/logged-in');
+      console.log('Workers response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setWorkers(data);
+        console.log('Logged-in workers data:', data);
+        setWorkers(data.workers || []);
       }
     } catch (error) {
-      console.error('Failed to fetch workers');
+      console.error('Failed to fetch workers:', error);
     }
   };
 
   const assignWorker = async (requestId: string, workerId: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/service-requests/${requestId}/assign`, {
-        method: 'PUT',
+      console.log('Assigning worker:', { requestId, workerId });
+      
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/assign`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId })
+        body: JSON.stringify({ workerId, status: 'worker-assigned' })
       });
-
+      
+      console.log('Assignment response status:', response.status);
+      
       if (response.ok) {
+        const result = await response.json();
+        console.log('Assignment successful:', result);
         toast({ title: "Success", description: "Worker assigned successfully!" });
+        setAssignDialogOpen(false);
+        setRequestToAssign(null);
         fetchServiceRequests();
+      } else {
+        const errorData = await response.text();
+        console.error('Assignment failed:', response.status, errorData);
+        toast({ title: "Error", description: `Failed to assign worker: ${response.status}`, variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to assign worker", variant: "destructive" });
+      console.error('Assignment error:', error);
+      toast({ title: "Error", description: "Network error during assignment", variant: "destructive" });
     }
+  };
+
+  const openAssignDialog = async (request: ServiceRequest) => {
+    setRequestToAssign(request);
+    setAssignDialogOpen(true);
+    fetchOnlineWorkers();
+    fetchWorkers();
   };
 
   const updateRequestStatus = async (requestId: string, status: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/service-requests/${requestId}/status`, {
-        method: 'PUT',
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
@@ -223,18 +282,14 @@ const AdminServiceRequests = () => {
           </Dialog>
 
           {request.status === 'pending' && (
-            <Select onValueChange={(workerId) => assignWorker(request._id, workerId)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Assign Worker" />
-              </SelectTrigger>
-              <SelectContent>
-                {workers.map((worker) => (
-                  <SelectItem key={worker._id} value={worker._id}>
-                    {worker.firstName} {worker.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => openAssignDialog(request)}
+            >
+              <UserCheck className="h-4 w-4 mr-1" />
+              Assign Worker
+            </Button>
           )}
 
           {request.status !== 'completed' && (
@@ -288,6 +343,77 @@ const AdminServiceRequests = () => {
           </CardContent>
         </Card>
       )}
+      
+      {/* Worker Assignment Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Worker</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Request Details</h4>
+              <p className="text-sm text-muted-foreground">
+                {requestToAssign?.serviceName} - {requestToAssign?.userName}
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-3">Available Workers</h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {(() => {
+                  console.log('All workers:', workers);
+                  console.log('Online worker IDs:', onlineWorkers);
+                  const onlineWorkersList = workers.filter(worker => onlineWorkers.includes(worker._id));
+                  console.log('Filtered online workers:', onlineWorkersList);
+                  return onlineWorkersList.length === 0;
+                })() ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No workers are currently online
+                  </p>
+                ) : (
+                  workers
+                    .filter(worker => onlineWorkers.includes(worker._id))
+                    .map((worker) => (
+                      <div 
+                        key={worker._id} 
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                        onClick={() => {
+                          console.log('Assigning to worker:', worker._id);
+                          console.log('Request to assign:', requestToAssign);
+                          console.log('Request ID:', requestToAssign?.id || requestToAssign?._id);
+                          const requestId = requestToAssign?.id || requestToAssign?._id;
+                          if (requestId) {
+                            assignWorker(requestId, worker._id);
+                          } else {
+                            console.error('No request ID found');
+                          }
+                        }}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 rounded-full bg-green-500" />
+                          <div>
+                            <p className="font-medium">{worker.firstName} {worker.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{worker.email}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-green-600 border-green-600">
+                          Online
+                        </Badge>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

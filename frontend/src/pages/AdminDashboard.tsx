@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/contexts/NotificationContext";
 import AdminServiceRequests from "@/components/AdminServiceRequests";
 import { 
   Users, Settings, Bell, Search, Filter, Calendar, MapPin, Clock, 
@@ -21,13 +22,14 @@ import {
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const { notifications, unreadCount, markAsRead } = useNotifications();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0, workers: 0 });
   const [filters, setFilters] = useState({ status: "all", distance: "all", sort: "newest" });
   const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState([]);
+  const [localNotifications, setLocalNotifications] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [profileData, setProfileData] = useState({
     name: user?.firstName + " " + user?.lastName || "",
@@ -40,8 +42,12 @@ const AdminDashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     if (!user?.id) return;
     
+    console.log('AdminDashboard: Fetching data for admin', user.id);
+    
     try {
       const token = localStorage.getItem('token');
+      console.log('AdminDashboard: Using token', token ? 'exists' : 'missing');
+      
       const [requestsRes, usersRes] = await Promise.all([
         fetch(`http://localhost:3001/api/requests/admin/${user.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -51,45 +57,60 @@ const AdminDashboard = () => {
         })
       ]);
 
+      console.log('AdminDashboard: Requests response status', requestsRes.status);
+      console.log('AdminDashboard: Users response status', usersRes.status);
+
       let requestsData = [];
       let usersData = [];
 
       if (requestsRes.ok) {
         requestsData = await requestsRes.json();
+        console.log('AdminDashboard: Requests data', requestsData);
+      } else {
+        console.error('AdminDashboard: Failed to fetch requests', requestsRes.status, await requestsRes.text());
       }
       
       if (usersRes.ok) {
         usersData = await usersRes.json();
+        console.log('AdminDashboard: Users data', usersData);
+      } else {
+        console.error('AdminDashboard: Failed to fetch users', usersRes.status);
       }
 
-      setRequests(Array.isArray(requestsData) ? requestsData : []);
+      // Handle both array and object with requests property
+      const finalRequestsData = requestsData.requests || requestsData;
+      setRequests(Array.isArray(finalRequestsData) ? finalRequestsData : []);
       setUsers(Array.isArray(usersData) ? usersData : []);
       
+      console.log('AdminDashboard: Final requests count', Array.isArray(finalRequestsData) ? finalRequestsData.length : 0);
+      
       const stats = {
-        total: requestsData.length || 0,
-        pending: requestsData.filter(r => r.status === 'pending').length || 0,
-        completed: requestsData.filter(r => r.status === 'completed').length || 0,
+        total: finalRequestsData.length || 0,
+        pending: finalRequestsData.filter(r => r.status === 'pending').length || 0,
+        completed: finalRequestsData.filter(r => r.status === 'completed').length || 0,
         workers: usersData.filter(u => u.userType === 'worker').length || 0
       };
       setStats(stats);
+      console.log('AdminDashboard: Stats', stats);
 
-      const recentNotifications = requestsData
+      const recentNotifications = finalRequestsData
         .filter(r => r.status === 'pending')
         .slice(0, 5)
         .map(r => ({
-          id: r._id,
+          id: r._id || r.id,
           type: 'request',
           title: 'New Service Request',
-          message: `${r.userId?.firstName || 'User'} needs ${r.urgency || 'medium'} priority assistance`,
+          message: `${r.userName || r.userId?.firstName || 'User'} needs ${r.urgency || 'medium'} priority assistance`,
           time: new Date(r.createdAt).toLocaleTimeString()
         }));
-      setNotifications(recentNotifications);
+      setLocalNotifications(recentNotifications);
+      console.log('AdminDashboard: Recent notifications', recentNotifications);
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
       setRequests([]);
       setUsers([]);
       setStats({ total: 0, pending: 0, completed: 0, workers: 0 });
-      setNotifications([]);
+      setLocalNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -188,9 +209,9 @@ const AdminDashboard = () => {
             <div className="relative">
               <Button variant="ghost" size="sm">
                 <Bell className="h-4 w-4" />
-                {notifications.length > 0 && (
+                {unreadCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 bg-red-500 text-xs px-1">
-                    {notifications.length}
+                    {unreadCount}
                   </Badge>
                 )}
               </Button>
@@ -229,6 +250,19 @@ const AdminDashboard = () => {
             >
               <Users className="h-4 w-4 mr-2" />
               User Management
+            </Button>
+            <Button
+              variant={activeTab === "notifications" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("notifications")}
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Notifications
+              {unreadCount > 0 && (
+                <Badge className="ml-auto bg-red-500 text-xs px-1">
+                  {unreadCount}
+                </Badge>
+              )}
             </Button>
             <Button
               variant={activeTab === "profile" ? "secondary" : "ghost"}
@@ -318,10 +352,10 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {notifications.length === 0 ? (
+                    {localNotifications.length === 0 ? (
                       <p className="text-gray-400">No new notifications</p>
                     ) : (
-                      notifications.map((notif) => (
+                      localNotifications.map((notif) => (
                         <div key={notif.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                           <div>
                             <p className="font-medium text-white">{notif.title}</p>
@@ -513,6 +547,64 @@ const AdminDashboard = () => {
                     ))}
                     {requests.filter(r => r.status === 'completed').length === 0 && (
                       <p className="text-gray-400 text-center py-4">No completed work history</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === "notifications" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Notifications</h2>
+              
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    {notifications.length === 0 ? (
+                      <p className="text-gray-400 text-center py-8">No notifications</p>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div 
+                          key={notification.id} 
+                          className={`flex items-center justify-between p-4 rounded-lg ${
+                            notification.isRead ? 'bg-gray-700' : 'bg-blue-900/30 border border-blue-500/30'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-2 h-2 rounded-full ${
+                              notification.isRead ? 'bg-gray-500' : 'bg-blue-500'
+                            }`} />
+                            <div>
+                              <p className="font-medium text-white">{notification.title}</p>
+                              <p className="text-sm text-gray-400">{notification.message}</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {new Date(notification.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {!notification.isRead && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => markAsRead(notification.id)}
+                              >
+                                Mark as Read
+                              </Button>
+                            )}
+                            {notification.requestId && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => setActiveTab('requests')}
+                              >
+                                View Request
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
                 </CardContent>
