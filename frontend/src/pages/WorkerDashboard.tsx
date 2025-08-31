@@ -10,10 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
+import { io } from 'socket.io-client';
 
-// Google Calendar API configuration
-const GOOGLE_API_KEY = 'AIzaSyClKCOHalvIwuSUxhAWl6FNsdF4mYMlWWc';
-const CALENDAR_ID = 'primary';
 import { 
   Settings2, Bell, User, Search, Calendar, List, Grid3X3, 
   MapPin, Clock, DollarSign, MessageCircle, Navigation,
@@ -23,7 +21,7 @@ import {
 
 // Google Calendar API configuration
 const GOOGLE_API_KEY = 'AIzaSyClKCOHalvIwuSUxhAWl6FNsdF4mYMlWWc';
-const CALENDAR_ID = 'primary'; // Use primary calendar or specific calendar ID
+const CALENDAR_ID = 'primary';
 
 // Load Google API
 const loadGoogleAPI = () => {
@@ -86,8 +84,10 @@ const WorkerDashboard = () => {
   const [message, setMessage] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
+  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
   const [isGoogleAPILoaded, setIsGoogleAPILoaded] = useState(false);
-  const [isCalendarAuthorized, setIsCalendarAuthorized] = useState(false);
 
   // Mock data for demonstration
   const mockTasks: Task[] = [
@@ -139,18 +139,14 @@ const WorkerDashboard = () => {
     }
   ];
 
-  const mockNotifications = [
-    { id: 1, message: "New Request #1001 Assigned. Click here to view more", time: "2 min ago" },
-    { id: 2, message: "Payment received for Job #998", time: "15 min ago" },
-    { id: 3, message: "Task #997 completed successfully", time: "1 hour ago" }
-  ];
+
 
   useEffect(() => {
     fetchTasks();
     fetchNotifications();
-<<<<<<< HEAD
-    loadGoogleAPI();
+    initializeGoogleCalendar();
     setWorkerOnline();
+    setupSocketConnection();
     
     // Set worker offline when leaving the page
     const handleBeforeUnload = () => {
@@ -164,6 +160,46 @@ const WorkerDashboard = () => {
       setWorkerOffline();
     };
   }, []);
+
+  const setupSocketConnection = () => {
+    if (!user?.id) return;
+    
+    try {
+      // Connect to socket for real-time notifications
+      const socket = io('http://localhost:3001');
+      
+      socket.emit('join', user.id);
+      console.log('Worker connected to socket, joined room:', user.id);
+      
+      socket.on('new_notification', (notification) => {
+        console.log('Worker received notification:', notification);
+        
+        // Show toast notification
+        toast({
+          title: notification.title || 'New Task Assigned',
+          description: notification.message || 'You have been assigned a new task',
+        });
+        
+        // Add to popup notifications
+        setPopupNotifications(prev => [...prev, {
+          id: Date.now().toString(),
+          title: notification.title || 'New Task Assigned',
+          message: notification.message || 'You have been assigned a new task',
+          time: new Date().toLocaleTimeString()
+        }]);
+        
+        // Refresh tasks to show the new assignment
+        fetchTasks();
+        fetchNotifications();
+      });
+      
+      return () => {
+        socket.disconnect();
+      };
+    } catch (error) {
+      console.error('Socket connection error:', error);
+    }
+  };
 
   const setWorkerOnline = async () => {
     try {
@@ -188,48 +224,6 @@ const WorkerDashboard = () => {
       console.error('Error setting worker offline:', error);
     }
   };
-
-  const loadGoogleAPI = () => {
-    if (window.gapi) {
-      initializeGoogleAPI();
-      return;
-    }
-    
-    const script = document.createElement('script');
-    script.src = 'https://apis.google.com/js/api.js';
-    script.onload = initializeGoogleAPI;
-    document.body.appendChild(script);
-  };
-
-  const initializeGoogleAPI = () => {
-    window.gapi.load('client:auth2', () => {
-      window.gapi.client.init({
-        apiKey: GOOGLE_API_KEY,
-        clientId: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com',
-        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-        scope: 'https://www.googleapis.com/auth/calendar'
-      }).then(() => {
-        setIsGoogleAPILoaded(true);
-        const authInstance = window.gapi.auth2.getAuthInstance();
-        setIsCalendarAuthorized(authInstance.isSignedIn.get());
-      }).catch(error => {
-        console.error('Error initializing Google API:', error);
-      });
-    });
-  };
-
-  const authorizeCalendar = async () => {
-    try {
-      const authInstance = window.gapi.auth2.getAuthInstance();
-      await authInstance.signIn();
-      setIsCalendarAuthorized(true);
-      toast({ title: "Success", description: "Google Calendar authorized successfully!" });
-    } catch (error) {
-      console.error('Authorization error:', error);
-      toast({ title: "Error", description: "Failed to authorize Google Calendar", variant: "destructive" });
-=======
-    initializeGoogleCalendar();
-  }, []);
 
   const initializeGoogleCalendar = async () => {
     try {
@@ -265,42 +259,10 @@ const WorkerDashboard = () => {
       setGoogleEvents(events);
     } catch (error) {
       console.error('Error fetching Google Calendar events:', error);
-      // If there's an error, we'll still show the task-based calendar
->>>>>>> 0ac72f4f9cfba8a4fd3a718fe49e74f78664fd9c
     }
   };
 
   const createGoogleCalendarEvent = async (task: Task) => {
-<<<<<<< HEAD
-    if (!isCalendarAuthorized) {
-      await authorizeCalendar();
-      return;
-    }
-
-    try {
-      const startTime = new Date(`${task.date} ${task.time}`);
-      const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
-
-      const event = {
-        summary: `Service Task: ${task.service}`,
-        description: `Customer: ${task.customer}\nLocation: ${task.location}\nService: ${task.service}\nPriority: ${task.priority}`,
-        start: {
-          dateTime: startTime.toISOString(),
-          timeZone: 'America/New_York'
-        },
-        end: {
-          dateTime: endTime.toISOString(),
-          timeZone: 'America/New_York'
-        },
-        location: task.location,
-        reminders: {
-          useDefault: false,
-          overrides: [
-            { method: 'email', minutes: 24 * 60 },
-            { method: 'popup', minutes: 30 }
-          ]
-        }
-=======
     try {
       if (!window.gapi || !window.gapi.client || !window.gapi.client.calendar) {
         console.log('Google API not available');
@@ -308,7 +270,7 @@ const WorkerDashboard = () => {
       }
 
       const startDateTime = new Date(`${task.date} ${task.time}`);
-      const endDateTime = new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000); // 2 hours
+      const endDateTime = new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000);
 
       const event = {
         summary: `${task.service} - ${task.customer}`,
@@ -323,7 +285,6 @@ const WorkerDashboard = () => {
         },
         location: task.location,
         colorId: task.priority === 'high' ? '11' : task.priority === 'medium' ? '5' : '2'
->>>>>>> 0ac72f4f9cfba8a4fd3a718fe49e74f78664fd9c
       };
 
       const response = await window.gapi.client.calendar.events.insert({
@@ -331,20 +292,6 @@ const WorkerDashboard = () => {
         resource: event
       });
 
-<<<<<<< HEAD
-      toast({ 
-        title: "Success", 
-        description: "Task added to Google Calendar successfully!" 
-      });
-      
-    } catch (error) {
-      console.error('Error creating calendar event:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to add task to calendar", 
-        variant: "destructive" 
-      });
-=======
       if (response.status === 200) {
         toast({ title: "Event Created", description: "Task added to Google Calendar" });
         await fetchGoogleCalendarEvents();
@@ -352,7 +299,6 @@ const WorkerDashboard = () => {
     } catch (error) {
       console.error('Error creating Google Calendar event:', error);
       toast({ title: "Error", description: "Failed to create calendar event", variant: "destructive" });
->>>>>>> 0ac72f4f9cfba8a4fd3a718fe49e74f78664fd9c
     }
   };
 
@@ -391,7 +337,7 @@ const WorkerDashboard = () => {
       const token = localStorage.getItem('token');
       
       if (!token) {
-        setNotifications(mockNotifications);
+        setNotifications([]);
         return;
       }
       
@@ -399,16 +345,15 @@ const WorkerDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (!response.ok) {
-        throw new Error('API not available');
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+      } else {
+        setNotifications([]);
       }
-      
-      const data = await response.json();
-      setNotifications(data.notifications || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      // Use mock data as fallback
-      setNotifications(mockNotifications);
+      setNotifications([]);
     }
   };
 
@@ -605,10 +550,6 @@ const WorkerDashboard = () => {
     if (searchQuery && !task.customer?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
-  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
-  const [isGoogleAPILoaded, setIsGoogleAPILoaded] = useState(false);
 
   const CalendarView = () => {
     const today = new Date();

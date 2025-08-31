@@ -16,6 +16,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import SimpleMap from "@/components/SimpleMap";
+
+// Google Maps API key
+const GOOGLE_MAPS_API_KEY = 'AIzaSyAzjs-zFMmK8AFRXJsoBwef8ZL3UMRnChI';
 import { 
   Car, MapPin, ArrowLeft, User, Building2, Phone, Send, Clock, Wrench, Users, AlertCircle,
   Search, Filter, Grid, List, Map, Star, Calendar, Upload, CreditCard, Eye, MessageCircle,
@@ -788,11 +791,20 @@ const UserDashboard = () => {
             {viewMode === 'map' ? (
               <Card>
                 <CardContent className="p-6">
-                  <div className="h-96 bg-muted rounded flex items-center justify-center">
-                    <div className="text-center">
-                      <Map className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-muted-foreground">Map View</p>
-                      <p className="text-sm text-muted-foreground">Workshop locations will be displayed here</p>
+                  <div className="h-96 rounded overflow-hidden">
+                    <iframe
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${userLocation.lng-0.05},${userLocation.lat-0.05},${userLocation.lng+0.05},${userLocation.lat+0.05}&layer=mapnik`}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Showing workshops near:</span>
+                      <span className="font-mono">{userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -867,12 +879,30 @@ const UserDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-96 bg-muted rounded flex items-center justify-center">
-                  <div className="text-center">
-                    <MapPin className="h-12 w-12 mx-auto mb-4 text-primary" />
-                    <p className="text-muted-foreground">Your Current Location</p>
-                    <p className="text-sm text-muted-foreground">Location services will be displayed here</p>
+                <div className="h-96 rounded overflow-hidden">
+                  <iframe
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${userLocation.lng-0.01},${userLocation.lat-0.01},${userLocation.lng+0.01},${userLocation.lat+0.01}&layer=mapnik&marker=${userLocation.lat},${userLocation.lng}`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                  />
+                </div>
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Current Location:</span>
+                    <span className="font-mono">{userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}</span>
                   </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="mt-2 w-full"
+                    onClick={getUserLocation}
+                  >
+                    <Navigation className="h-4 w-4 mr-2" />
+                    Update Location
+                  </Button>
                 </div>
               </CardContent>
             </Card>

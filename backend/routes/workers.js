@@ -4,44 +4,116 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Store online workers in memory (in production, use Redis)
-let onlineWorkers = new Set();
+// Test endpoint
+router.get('/test', (req, res) => {
+  res.json({ message: 'Workers route is working!' });
+});
 
-// Worker comes online
-router.post('/online', authenticate, async (req, res) => {
+// Store logged-in workers with timestamps
+export let loggedInWorkers = new Map(); // userId -> { loginTime, lastActivity }
+
+// Clean up inactive sessions every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  const fiveMinutes = 5 * 60 * 1000;
+  
+  for (const [userId, session] of loggedInWorkers.entries()) {
+    if (now - session.lastActivity > fiveMinutes) {
+      loggedInWorkers.delete(userId);
+      console.log(`Removed inactive worker: ${userId}`);
+    }
+  }
+}, 60000); // Check every minute
+
+// Track worker login
+router.post('/login', async (req, res) => {
   try {
-    if (req.user.userType !== 'worker') {
-      return res.status(403).json({ error: 'Access denied. Worker only.' });
+    const { userId } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
     }
     
-    onlineWorkers.add(req.user._id.toString());
+    // Add worker to logged-in list
+    loggedInWorkers.set(userId, {
+      loginTime: Date.now(),
+      lastActivity: Date.now()
+    });
     
-    res.json({ message: 'Worker status updated to online' });
+    console.log(`Worker logged in: ${userId}`);
+    res.json({ message: 'Worker login tracked' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Worker goes offline
-router.post('/offline', authenticate, async (req, res) => {
+// Track worker logout
+router.post('/logout', async (req, res) => {
   try {
-    if (req.user.userType !== 'worker') {
-      return res.status(403).json({ error: 'Access denied. Worker only.' });
+    const { userId } = req.body;
+    
+    if (userId && loggedInWorkers.has(userId)) {
+      loggedInWorkers.delete(userId);
+      console.log(`Worker logged out: ${userId}`);
     }
     
-    onlineWorkers.delete(req.user._id.toString());
-    
-    res.json({ message: 'Worker status updated to offline' });
+    res.json({ message: 'Worker logout tracked' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get online workers
-router.get('/online', async (req, res) => {
+// Get logged-in workers
+router.get('/logged-in', async (req, res) => {
   try {
-    res.json({ onlineWorkers: Array.from(onlineWorkers) });
+    console.log('=== LOGGED-IN WORKERS DEBUG ===');
+    console.log('Map size:', loggedInWorkers.size);
+    console.log('Map contents:', Array.from(loggedInWorkers.entries()));
+    
+    const loggedInUserIds = Array.from(loggedInWorkers.keys());
+    console.log('Logged-in user IDs:', loggedInUserIds);
+    
+    if (loggedInUserIds.length === 0) {
+      console.log('No logged-in workers found');
+      return res.json({ workers: [] });
+    }
+    
+    // Get worker details from database
+    const workers = await User.find({
+      _id: { $in: loggedInUserIds },
+      userType: 'worker'
+    }).select('firstName lastName email phone');
+    
+    console.log('Found workers in DB:', workers);
+    console.log('================================');
+    
+    res.json({ workers });
   } catch (error) {
+    console.error('Error in logged-in workers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get logged-in workers with details
+router.get('/online-details', async (req, res) => {
+  try {
+    const loggedInUserIds = Array.from(loggedInWorkers.keys());
+    console.log('Logged-in worker IDs:', loggedInUserIds);
+    
+    if (loggedInUserIds.length === 0) {
+      return res.json({ workers: [] });
+    }
+    
+    // Get worker details from database
+    const workers = await User.find({
+      _id: { $in: loggedInUserIds },
+      userType: 'worker'
+    }).select('firstName lastName email phone');
+    
+    console.log('Found logged-in workers:', workers);
+    res.json({ workers });
+  } catch (error) {
+    console.error('Error getting logged-in workers:', error);
     res.status(500).json({ error: error.message });
   }
 });

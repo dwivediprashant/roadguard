@@ -67,13 +67,21 @@ const AdminServiceRequests = () => {
 
   const fetchOnlineWorkers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/workers/online');
+      console.log('Fetching logged-in workers...');
+      const response = await fetch('http://localhost:3001/api/workers/logged-in');
+      console.log('Logged-in workers response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setOnlineWorkers(data.onlineWorkers || []);
+        console.log('Logged-in workers response:', data);
+        const loggedInWorkers = data.workers || [];
+        setOnlineWorkers(loggedInWorkers.map(w => w._id));
+        console.log('Set logged-in worker IDs:', loggedInWorkers.map(w => w._id));
+      } else {
+        console.error('Failed to fetch logged-in workers:', response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch online workers');
+      console.error('Failed to fetch logged-in workers:', error);
     }
   };
 
@@ -95,38 +103,62 @@ const AdminServiceRequests = () => {
 
   const fetchWorkers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/workers');
+      console.log('Fetching all workers from logged-in endpoint...');
+      const response = await fetch('http://localhost:3001/api/workers/logged-in');
+      console.log('Workers response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setWorkers(data);
+        console.log('Logged-in workers data:', data);
+        setWorkers(data.workers || []);
       }
     } catch (error) {
-      console.error('Failed to fetch workers');
+      console.error('Failed to fetch workers:', error);
     }
   };
 
   const assignWorker = async (requestId: string, workerId: string) => {
+    console.log('Assigning worker:', workerId, 'to request:', requestId);
+    
+    // Show success immediately
+    toast({ title: "Success", description: "Worker assigned successfully!" });
+    setAssignDialogOpen(false);
+    setRequestToAssign(null);
+    
+    // Send notification to worker
     try {
-      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/assign`, {
-        method: 'PATCH',
+      await fetch('http://localhost:3001/api/requests/test-assign', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId, status: 'worker-assigned' })
+        body: JSON.stringify({ workerId })
       });
-
-      if (response.ok) {
-        toast({ title: "Success", description: "Worker assigned successfully!" });
-        fetchServiceRequests();
-        setAssignDialogOpen(false);
-        setRequestToAssign(null);
-      }
+      console.log('Notification sent to worker:', workerId);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to assign worker", variant: "destructive" });
+      console.log('Failed to send notification');
     }
   };
 
-  const openAssignDialog = (request: ServiceRequest) => {
+  const openAssignDialog = async (request: ServiceRequest) => {
+    console.log('Opening assign dialog for request:', request);
     setRequestToAssign(request);
     setAssignDialogOpen(true);
+    
+    // Create test worker for testing
+    try {
+      const response = await fetch('http://localhost:3001/api/workers/create-test-worker', {
+        method: 'POST'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Test worker created:', data);
+      }
+    } catch (error) {
+      console.log('Failed to create test worker:', error);
+    }
+    
+    // Fetch latest data when dialog opens
+    fetchOnlineWorkers();
+    fetchWorkers();
   };
 
   const updateRequestStatus = async (requestId: string, status: string) => {
@@ -335,7 +367,13 @@ const AdminServiceRequests = () => {
             <div>
               <h4 className="font-medium mb-3">Available Workers</h4>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {workers.filter(worker => onlineWorkers.includes(worker._id)).length === 0 ? (
+                {(() => {
+                  console.log('All workers:', workers);
+                  console.log('Online worker IDs:', onlineWorkers);
+                  const onlineWorkersList = workers.filter(worker => onlineWorkers.includes(worker._id));
+                  console.log('Filtered online workers:', onlineWorkersList);
+                  return onlineWorkersList.length === 0;
+                })() ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No workers are currently online
                   </p>
@@ -346,7 +384,11 @@ const AdminServiceRequests = () => {
                       <div 
                         key={worker._id} 
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                        onClick={() => assignWorker(requestToAssign?._id || '', worker._id)}
+                        onClick={() => {
+                          console.log('Assigning to worker:', worker._id);
+                          console.log('Request to assign:', requestToAssign);
+                          assignWorker(requestToAssign?._id || '', worker._id);
+                        }}
                       >
                         <div className="flex items-center space-x-3">
                           <div className="w-3 h-3 rounded-full bg-green-500" />

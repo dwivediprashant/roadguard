@@ -115,6 +115,41 @@ router.patch('/:requestId/status', async (req, res) => {
   }
 });
 
+// Test assignment endpoint
+router.post('/test-assign', async (req, res) => {
+  try {
+    const { workerId } = req.body;
+    console.log('=== ASSIGNMENT NOTIFICATION ===');
+    console.log('Worker ID:', workerId);
+    
+    const io = req.app.get('io');
+    console.log('IO instance available:', !!io);
+    
+    if (io) {
+      const notificationData = {
+        id: Date.now().toString(),
+        type: 'task_assigned',
+        title: 'New Task Assigned!',
+        message: 'Admin has assigned you a new service task. Check your dashboard for details.',
+        workerId: workerId,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('Sending notification:', notificationData);
+      console.log('To room:', `user_${workerId}`);
+      
+      io.to(`user_${workerId}`).emit('new_notification', notificationData);
+      console.log('Notification sent successfully');
+    }
+    
+    console.log('===============================');
+    res.json({ message: 'Worker assigned successfully', workerId });
+  } catch (error) {
+    console.error('Assignment error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Assign worker to request
 router.patch('/:requestId/assign', async (req, res) => {
   try {

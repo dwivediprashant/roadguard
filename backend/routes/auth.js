@@ -10,6 +10,9 @@ import Shop from '../models/Shop.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { authenticate } from '../middleware/auth.js';
 
+// Import logged-in workers map
+import { loggedInWorkers } from './workers.js';
+
 const router = express.Router();
 
 const generateToken = (userId) => {
@@ -269,6 +272,20 @@ router.post('/login', [
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN
     });
+
+    // Track worker login
+    if (user.userType === 'worker') {
+      const userId = user._id.toString();
+      loggedInWorkers.set(userId, {
+        loginTime: Date.now(),
+        lastActivity: Date.now()
+      });
+      console.log(`=== WORKER LOGIN TRACKED ===`);
+      console.log(`Worker ID: ${userId}`);
+      console.log(`Map size after login: ${loggedInWorkers.size}`);
+      console.log(`Map contents:`, Array.from(loggedInWorkers.entries()));
+      console.log(`=============================`);
+    }
 
     res.json({
       message: 'Login successful',
