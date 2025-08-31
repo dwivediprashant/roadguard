@@ -27,12 +27,14 @@ export const DashboardNav = () => {
             Dashboard
           </Button>
         </Link>
-        <Link to="/profile">
-          <Button variant="ghost" size="sm" className="hover:bg-blue-50">
-            <User className="w-4 h-4 mr-2" />
-            Profile
-          </Button>
-        </Link>
+        {user?.userType !== 'worker' && (
+          <Link to="/profile">
+            <Button variant="ghost" size="sm" className="hover:bg-blue-50">
+              <User className="w-4 w-4 mr-2" />
+              Profile
+            </Button>
+          </Link>
+        )}
         {user?.userType === 'admin' && (
           <Link to="/admin">
             <Button variant="ghost" size="sm" className="hover:bg-red-50 text-red-600">

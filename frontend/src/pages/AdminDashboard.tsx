@@ -537,34 +537,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Work History */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <History className="h-5 w-5 mr-2" />
-                    Work History
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {requests.filter(r => r.status === 'completed').slice(0, 3).map((request, i) => (
-                      <div key={request._id || i} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                        <div>
-                          <p className="font-medium text-white">Service Request #{request._id?.slice(-6) || `00${i+1}`}</p>
-                          <p className="text-sm text-gray-400">{request.message || 'Completed vehicle service'}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-green-500">Completed</p>
-                          <p className="text-xs text-gray-500">{new Date(request.createdAt).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {requests.filter(r => r.status === 'completed').length === 0 && (
-                      <p className="text-gray-400 text-center py-4">No completed work history</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+
             </div>
           )}
 

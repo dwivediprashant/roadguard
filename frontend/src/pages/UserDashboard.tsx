@@ -335,7 +335,6 @@ const UserDashboard = () => {
           {[
             { key: 'home', label: 'Home', icon: Home },
             { key: 'search', label: 'Find Workshops', icon: Search },
-            { key: 'tracking', label: 'Track Service', icon: Navigation },
             { key: 'history', label: 'Service History', icon: History }
           ].map(({ key, label, icon: Icon }) => (
             <Button
@@ -471,22 +470,46 @@ const UserDashboard = () => {
                       <User className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{mechanic.firstName} {mechanic.lastName}</p>
+                      <p 
+                        className="text-sm font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`/worker-profile/${mechanic._id}`, '_blank');
+                        }}
+                        title="View worker profile"
+                      >
+                        {mechanic.firstName} {mechanic.lastName}
+                      </p>
                       <p className="text-xs text-muted-foreground">Registered Worker</p>
                     </div>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedWorkshop(workshop);
-                      setSelectedMechanic(mechanic._id);
-                      setCurrentView('booking');
-                      setBreadcrumbs(['Dashboard', 'Book Service', `${mechanic.firstName} ${mechanic.lastName}`]);
-                    }}
-                  >
-                    Request
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Opening worker profile:', mechanic._id);
+                        window.open(`/worker-profile/${mechanic._id}`, '_blank');
+                      }}
+                      className="text-xs px-2"
+                    >
+                      Profile
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedWorkshop(workshop);
+                        setSelectedMechanic(mechanic._id);
+                        setCurrentView('booking');
+                        setBreadcrumbs(['Dashboard', 'Book Service', `${mechanic.firstName} ${mechanic.lastName}`]);
+                      }}
+                      className="text-xs px-2"
+                    >
+                      Request
+                    </Button>
+                  </div>
                 </div>
               ))}
               {workshop.mechanics.length > 3 && (
@@ -852,19 +875,32 @@ const UserDashboard = () => {
                                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                     {mechanic.firstName} {mechanic.lastName}
                                   </span>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="h-6 px-2 text-xs"
-                                    onClick={() => {
-                                      setSelectedWorkshop(workshop);
-                                      setSelectedMechanic(mechanic._id);
-                                      setCurrentView('booking');
-                                      setBreadcrumbs(['Dashboard', 'Book Service', `${mechanic.firstName} ${mechanic.lastName}`]);
-                                    }}
-                                  >
-                                    Request
-                                  </Button>
+                                  <div className="flex gap-1">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-6 px-1 text-xs"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`/worker-profile/${mechanic._id}`, '_blank');
+                                      }}
+                                    >
+                                      Profile
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-6 px-1 text-xs"
+                                      onClick={() => {
+                                        setSelectedWorkshop(workshop);
+                                        setSelectedMechanic(mechanic._id);
+                                        setCurrentView('booking');
+                                        setBreadcrumbs(['Dashboard', 'Book Service', `${mechanic.firstName} ${mechanic.lastName}`]);
+                                      }}
+                                    >
+                                      Request
+                                    </Button>
+                                  </div>
                                 </div>
                               ))}
                               {workshop.mechanics.length > 2 && (
@@ -900,14 +936,12 @@ const UserDashboard = () => {
         );
       case 'booking':
         return renderBookingForm();
-      case 'tracking':
-        return renderServiceTracking();
       case 'history':
         return renderServiceHistory();
       default:
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => {
                 setCurrentView('search');
                 setBreadcrumbs(['Dashboard', 'Find Workshops']);
@@ -916,17 +950,6 @@ const UserDashboard = () => {
                   <Search className="h-12 w-12 mx-auto mb-4 text-primary" />
                   <h3 className="font-semibold mb-2">Find Workshops</h3>
                   <p className="text-sm text-muted-foreground">Search and filter nearby workshops</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => {
-                setCurrentView('tracking');
-                setBreadcrumbs(['Dashboard', 'Track Service']);
-              }}>
-                <CardContent className="p-6 text-center">
-                  <Navigation className="h-12 w-12 mx-auto mb-4 text-primary" />
-                  <h3 className="font-semibold mb-2">Track Service</h3>
-                  <p className="text-sm text-muted-foreground">Monitor your active service requests</p>
                 </CardContent>
               </Card>
               
