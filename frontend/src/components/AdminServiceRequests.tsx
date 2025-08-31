@@ -80,13 +80,19 @@ const AdminServiceRequests = () => {
         socket.on('new_notification', (notification) => {
           console.log('AdminServiceRequests: Received notification:', notification);
           
-          if (notification.type === 'request_received') {
-            toast({
-              title: notification.title || 'New Service Request',
-              description: notification.message || 'You have received a new service request',
-            });
-            
-            // Refresh service requests to show new request
+          toast({
+            title: notification.title || 'New Service Request',
+            description: notification.message || 'You have received a new service request',
+          });
+          
+          // Always refresh service requests when any notification arrives
+          fetchServiceRequests();
+        });
+        
+        // Also listen for debug notifications
+        socket.on('debug_notification', (data) => {
+          console.log('AdminServiceRequests: Debug notification received:', data);
+          if (data.adminId === user.id) {
             fetchServiceRequests();
           }
         });
@@ -121,7 +127,13 @@ const AdminServiceRequests = () => {
     
     try {
       console.log('AdminServiceRequests: Fetching requests for admin ID:', user.id);
-      const response = await fetch(`http://localhost:3001/api/requests/admin/${user.id}`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:3001/api/requests/admin/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       console.log('AdminServiceRequests: Response status:', response.status);
       
       if (response.ok) {

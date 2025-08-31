@@ -48,20 +48,13 @@ const AdminDashboard = () => {
       const token = localStorage.getItem('token');
       console.log('AdminDashboard: Using token', token ? 'exists' : 'missing');
       
-      const [requestsRes, usersRes] = await Promise.all([
-        fetch(`http://localhost:3001/api/requests/admin/${user.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('http://localhost:3001/api/auth/users', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+      const requestsRes = await fetch(`http://localhost:3001/api/requests/admin/${user.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
       console.log('AdminDashboard: Requests response status', requestsRes.status);
-      console.log('AdminDashboard: Users response status', usersRes.status);
 
       let requestsData = [];
-      let usersData = [];
 
       if (requestsRes.ok) {
         requestsData = await requestsRes.json();
@@ -69,18 +62,11 @@ const AdminDashboard = () => {
       } else {
         console.error('AdminDashboard: Failed to fetch requests', requestsRes.status, await requestsRes.text());
       }
-      
-      if (usersRes.ok) {
-        usersData = await usersRes.json();
-        console.log('AdminDashboard: Users data', usersData);
-      } else {
-        console.error('AdminDashboard: Failed to fetch users', usersRes.status);
-      }
 
       // Handle both array and object with requests property
       const finalRequestsData = requestsData.requests || requestsData;
       setRequests(Array.isArray(finalRequestsData) ? finalRequestsData : []);
-      setUsers(Array.isArray(usersData) ? usersData : []);
+      setUsers([]);
       
       console.log('AdminDashboard: Final requests count', Array.isArray(finalRequestsData) ? finalRequestsData.length : 0);
       
@@ -88,7 +74,7 @@ const AdminDashboard = () => {
         total: finalRequestsData.length || 0,
         pending: finalRequestsData.filter(r => r.status === 'pending').length || 0,
         completed: finalRequestsData.filter(r => r.status === 'completed').length || 0,
-        workers: usersData.filter(u => u.userType === 'worker').length || 0
+        workers: 0
       };
       setStats(stats);
       console.log('AdminDashboard: Stats', stats);

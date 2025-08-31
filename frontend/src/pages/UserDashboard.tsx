@@ -94,7 +94,6 @@ const UserDashboard = () => {
     description: '',
     serviceType: '',
     preferredDate: '',
-    preferredTime: '',
     location: '',
     images: [] as File[],
     issue: '',
@@ -195,21 +194,29 @@ const UserDashboard = () => {
     console.log('Admin data:', selectedWorkshop?.admin);
     console.log('Admin ID being sent:', selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId);
 
+    const adminId = selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId;
+    console.log('Extracted admin ID:', adminId);
+    console.log('Full admin object:', selectedWorkshop?.admin);
+    
     const requestData = {
       userId: user?.id,
       workshopId: selectedWorkshop?.shopId,
-      adminId: selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId,
+      adminId: adminId,
       userName: bookingForm.userName || `${user?.firstName} ${user?.lastName}`,
       serviceName: bookingForm.description,
       serviceType: bookingForm.serviceType,
       preferredDate: bookingForm.preferredDate,
-      preferredTime: bookingForm.preferredTime,
       location: bookingForm.location,
       issueDescription: bookingForm.issue,
       preferredWorkerId: selectedMechanic,
       chatWithAgent: bookingForm.chatWithAgent,
       status: 'pending'
     };
+    
+    if (!adminId) {
+      toast({ title: "Error", description: "Admin ID not found for this workshop", variant: "destructive" });
+      return;
+    }
     
     console.log('Submitting request with data:', requestData);
     
@@ -247,7 +254,7 @@ const UserDashboard = () => {
   const resetBookingForm = () => {
     setBookingForm({
       userName: '', serviceName: '', description: '', serviceType: '', 
-      preferredDate: '', preferredTime: '', location: '', images: [], issue: '', chatWithAgent: false
+      preferredDate: '', location: '', images: [], issue: '', chatWithAgent: false
     });
   };
 
@@ -573,23 +580,13 @@ const UserDashboard = () => {
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Preferred Date</Label>
-                <Input
-                  type="date"
-                  value={bookingForm.preferredDate}
-                  onChange={(e) => setBookingForm({...bookingForm, preferredDate: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label>Preferred Time</Label>
-                <Input
-                  type="time"
-                  value={bookingForm.preferredTime}
-                  onChange={(e) => setBookingForm({...bookingForm, preferredTime: e.target.value})}
-                />
-              </div>
+            <div>
+              <Label>Preferred Date</Label>
+              <Input
+                type="date"
+                value={bookingForm.preferredDate}
+                onChange={(e) => setBookingForm({...bookingForm, preferredDate: e.target.value})}
+              />
             </div>
             
             <div>
