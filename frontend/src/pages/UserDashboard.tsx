@@ -197,6 +197,8 @@ const UserDashboard = () => {
     const adminId = selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId;
     console.log('Extracted admin ID:', adminId);
     console.log('Full admin object:', selectedWorkshop?.admin);
+    console.log('Full workshop object:', selectedWorkshop);
+    console.log('Available admin fields:', Object.keys(selectedWorkshop?.admin || {}));
     
     const requestData = {
       userId: user?.id,

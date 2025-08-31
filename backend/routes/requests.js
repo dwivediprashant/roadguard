@@ -67,6 +67,10 @@ router.get('/admin/:adminId', async (req, res) => {
     const { adminId } = req.params;
     console.log('Fetching requests for admin ID:', adminId);
     
+    // First, get all requests to debug
+    const allRequests = await Request.find({}).select('adminId userId message createdAt');
+    console.log('All requests in database:', allRequests.map(r => ({ adminId: r.adminId, message: r.message })));
+    
     const requests = await Request.find({ adminId })
       .populate('userId', 'firstName lastName email phone')
       .populate('mechanicId', 'firstName lastName email phone')
