@@ -59,12 +59,42 @@ const AdminServiceRequests = () => {
       fetchServiceRequests();
       fetchWorkers();
       fetchOnlineWorkers();
+      setupSocketConnection();
       
       // Poll for online workers every 30 seconds
       const interval = setInterval(fetchOnlineWorkers, 30000);
       return () => clearInterval(interval);
     }
   }, [user?.id]);
+
+  const setupSocketConnection = () => {
+    if (!user?.id) return;
+    
+    try {
+      import('socket.io-client').then(({ io }) => {
+        const socket = io('http://localhost:3001');
+        
+        socket.emit('join', user.id);
+        console.log('AdminServiceRequests: Connected to socket, joined room:', user.id);
+        
+        socket.on('new_notification', (notification) => {
+          console.log('AdminServiceRequests: Received notification:', notification);
+          
+          if (notification.type === 'request_received') {
+            toast({
+              title: notification.title || 'New Service Request',
+              description: notification.message || 'You have received a new service request',
+            });
+            
+            // Refresh service requests to show new request
+            fetchServiceRequests();
+          }
+        });
+      });
+    } catch (error) {
+      console.error('AdminServiceRequests: Socket connection error:', error);
+    }
+  };
 
   const fetchOnlineWorkers = async () => {
     try {
@@ -90,13 +120,19 @@ const AdminServiceRequests = () => {
     if (!user?.id) return;
     
     try {
+      console.log('AdminServiceRequests: Fetching requests for admin ID:', user.id);
       const response = await fetch(`http://localhost:3001/api/requests/admin/${user.id}`);
+      console.log('AdminServiceRequests: Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('AdminServiceRequests: Received data:', data);
         setRequests(data.requests || data);
+      } else {
+        console.error('AdminServiceRequests: Failed to fetch requests:', response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch service requests');
+      console.error('AdminServiceRequests: Error fetching service requests:', error);
     } finally {
       setLoading(false);
     }
@@ -184,33 +220,30 @@ const AdminServiceRequests = () => {
   };
 
   const renderRequestCard = (request: ServiceRequest) => (
-    <Card key={request._id} className="border-2 hover:shadow-lg transition-shadow">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            <span>{request.userName}</span>
+    <Card key={request.id} className="border-2 hover:shadow-lg transition-shadow h-fit">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between text-base">
+          <div className="flex items-center gap-2 min-w-0">
+            <User className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="truncate">{request.userName}</span>
           </div>
-          <Badge variant={getStatusBadge(request.status) as any}>
+          <Badge variant={getStatusBadge(request.status) as any} className="text-xs">
             {request.status.replace('-', ' ').toUpperCase()}
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p><strong>Service:</strong> {request.serviceName}</p>
+      <CardContent className="space-y-3 pt-0">
+        <div className="space-y-2 text-sm">
+          <div className="grid grid-cols-1 gap-1">
+            <p className="truncate"><strong>Service:</strong> {request.serviceName}</p>
             <p><strong>Type:</strong> {request.serviceType}</p>
-          </div>
-          <div>
-            <p><strong>Date:</strong> {request.preferredDate}</p>
-            <p><strong>Time:</strong> {request.preferredTime}</p>
+            <p><strong>Date:</strong> {request.preferredDate} at {request.preferredTime}</p>
           </div>
         </div>
 
-        <div className="text-sm">
-          <p><strong>Location:</strong> {request.location}</p>
-          <p><strong>Issue:</strong> {request.issueDescription}</p>
+        <div className="text-sm space-y-1">
+          <p className="truncate"><strong>Location:</strong> {request.location}</p>
+          <p className="line-clamp-2"><strong>Issue:</strong> {request.issueDescription}</p>
         </div>
 
         {request.quotation && (
@@ -219,12 +252,13 @@ const AdminServiceRequests = () => {
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" onClick={() => setSelectedRequest(request)}>
-                <Eye className="h-4 w-4 mr-1" />
-                View Details
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedRequest(request)}>
+                <Eye className="h-3 w-3 mr-1" />
+                View
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
@@ -285,16 +319,18 @@ const AdminServiceRequests = () => {
             <Button 
               variant="outline" 
               size="sm"
+              className="flex-1"
               onClick={() => openAssignDialog(request)}
             >
-              <UserCheck className="h-4 w-4 mr-1" />
-              Assign Worker
+              <UserCheck className="h-3 w-3 mr-1" />
+              Assign
             </Button>
           )}
+          </div>
 
           {request.status !== 'completed' && (
-            <Select onValueChange={(status) => updateRequestStatus(request._id, status)}>
-              <SelectTrigger className="w-32">
+            <Select onValueChange={(status) => updateRequestStatus(request.id, status)}>
+              <SelectTrigger className="w-full text-sm">
                 <SelectValue placeholder="Update Status" />
               </SelectTrigger>
               <SelectContent>
@@ -329,7 +365,7 @@ const AdminServiceRequests = () => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
           {requests.map(renderRequestCard)}
         </div>
       )}

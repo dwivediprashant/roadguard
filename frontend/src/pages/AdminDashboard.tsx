@@ -118,9 +118,37 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    setupSocketConnection();
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
+
+  const setupSocketConnection = () => {
+    if (!user?.id) return;
+    
+    try {
+      import('socket.io-client').then(({ io }) => {
+        const socket = io('http://localhost:3001');
+        
+        socket.emit('join', user.id);
+        console.log('Admin connected to socket, joined room:', user.id);
+        
+        socket.on('new_notification', (notification) => {
+          console.log('Admin received notification:', notification);
+          
+          toast({
+            title: notification.title || 'New Notification',
+            description: notification.message || 'You have a new notification',
+          });
+          
+          // Refresh dashboard data to show new request
+          fetchDashboardData();
+        });
+      });
+    } catch (error) {
+      console.error('Socket connection error:', error);
+    }
+  };
 
   const updateRequestStatus = async (requestId, status) => {
     try {
@@ -372,7 +400,7 @@ const AdminDashboard = () => {
           )}
 
           {activeTab === "requests" && (
-            <div className="bg-gray-900 text-white p-6 rounded-lg">
+            <div className="bg-gray-900 text-white rounded-lg overflow-hidden">
               <AdminServiceRequests />
             </div>
           )}
