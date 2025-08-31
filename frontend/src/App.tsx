@@ -19,6 +19,8 @@ const WorkerDashboard = lazy(() => import("./pages/WorkerDashboard"));
 const WorkerPortal = lazy(() => import("./pages/WorkerPortal"));
 const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
+const WorkshopDetail = lazy(() => import("./pages/WorkshopDetail"));
+const ServiceRequest = lazy(() => import("./pages/ServiceRequest"));
 const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
 const WorkerTasks = lazy(() => import("./pages/WorkerTasks"));
@@ -112,6 +114,8 @@ const App = () => (
 
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                <Route path="/workshop/:workshopId" element={<WorkshopDetail />} />
+                <Route path="/service-request/:workshopId" element={<ProtectedRoute><ServiceRequest /></ProtectedRoute>} />
                 <Route path="/my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

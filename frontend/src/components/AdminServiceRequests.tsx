@@ -127,9 +127,11 @@ const AdminServiceRequests = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('AdminServiceRequests: Received data:', data);
+        console.log('AdminServiceRequests: Setting requests:', data.requests || data);
         setRequests(data.requests || data);
       } else {
-        console.error('AdminServiceRequests: Failed to fetch requests:', response.status);
+        const errorText = await response.text();
+        console.error('AdminServiceRequests: Failed to fetch requests:', response.status, errorText);
       }
     } catch (error) {
       console.error('AdminServiceRequests: Error fetching service requests:', error);
