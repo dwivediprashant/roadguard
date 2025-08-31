@@ -343,6 +343,42 @@ router.get('/service-requests/user/:userId', async (req, res) => {
   }
 });
 
+// Get assigned tasks for worker
+router.get('/worker/:workerId', async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    
+    const requests = await Request.find({ mechanicId: workerId })
+      .populate('userId', 'firstName lastName email phone')
+      .populate('adminId', 'firstName lastName')
+      .sort({ createdAt: -1 });
+
+    const workerTasks = await Promise.all(
+      requests.map(async (request) => {
+        const shop = await Shop.findOne({ shopId: request.shopId });
+        return {
+          id: request._id,
+          customer: `${request.userId.firstName} ${request.userId.lastName}`,
+          service: request.message,
+          status: request.status,
+          date: request.preferredDate || request.createdAt.toLocaleDateString(),
+          time: request.preferredTime || 'Not specified',
+          location: request.location,
+          description: request.issueDescription || request.message,
+          workshopName: shop?.shopName || 'Unknown Workshop',
+          priority: request.urgency || 'medium',
+          createdAt: request.createdAt
+        };
+      })
+    );
+
+    res.json({ tasks: workerTasks });
+  } catch (error) {
+    console.error('Get worker tasks error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get all requests for a user (My Requests page)
 router.get('/user/:userId', async (req, res) => {
   try {

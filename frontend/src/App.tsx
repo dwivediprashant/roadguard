@@ -21,6 +21,7 @@ const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const WorkshopDashboard = lazy(() => import("./pages/WorkshopDashboard"));
 const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
+const WorkerTasks = lazy(() => import("./pages/WorkerTasks"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminSignup = lazy(() => import("./pages/AdminSignup"));
 const WorkerLogin = lazy(() => import("./pages/WorkerLogin"));
@@ -107,6 +108,7 @@ const App = () => (
                 <Route path="/worker" element={<ProtectedRoute><WorkerPortal /></ProtectedRoute>} />
                 <Route path="/worker/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
                 <Route path="/worker-dashboard" element={<ProtectedRoute><WorkerDashboard /></ProtectedRoute>} />
+                <Route path="/worker-tasks" element={<ProtectedRoute><WorkerTasks /></ProtectedRoute>} />
 
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />

@@ -12,18 +12,24 @@ router.get('/test', (req, res) => {
 // Store logged-in workers with timestamps
 export let loggedInWorkers = new Map(); // userId -> { loginTime, lastActivity }
 
-// Clean up inactive sessions every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  const fiveMinutes = 5 * 60 * 1000;
-  
-  for (const [userId, session] of loggedInWorkers.entries()) {
-    if (now - session.lastActivity > fiveMinutes) {
-      loggedInWorkers.delete(userId);
-      console.log(`Removed inactive worker: ${userId}`);
+// Keep workers logged in - only remove on explicit logout
+// Update activity when workers are active
+router.post('/activity', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (loggedInWorkers.has(userId)) {
+      loggedInWorkers.set(userId, {
+        ...loggedInWorkers.get(userId),
+        lastActivity: Date.now()
+      });
     }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-}, 60000); // Check every minute
+});
 
 // Track worker login
 router.post('/login', async (req, res) => {

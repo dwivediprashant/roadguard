@@ -148,6 +148,17 @@ const WorkerDashboard = () => {
     setWorkerOnline();
     setupSocketConnection();
     
+    // Keep worker active - send activity ping every 2 minutes
+    const activityInterval = setInterval(() => {
+      if (user?.id) {
+        fetch('http://localhost:3001/api/workers/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        }).catch(() => {});
+      }
+    }, 120000); // 2 minutes
+    
     // Set worker offline when leaving the page
     const handleBeforeUnload = () => {
       setWorkerOffline();
@@ -156,10 +167,11 @@ const WorkerDashboard = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
+      clearInterval(activityInterval);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       setWorkerOffline();
     };
-  }, []);
+  }, [user?.id]);
 
   const setupSocketConnection = () => {
     if (!user?.id) return;
@@ -305,27 +317,47 @@ const WorkerDashboard = () => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
-      if (!token) {
-        // Use mock data if no token
+      if (!user?.id) {
         setTasks(mockTasks);
         return;
       }
       
-      const response = await fetch('http://localhost:3001/api/tasks/worker', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Fetch assigned tasks from requests
+      const response = await fetch(`http://localhost:3001/api/requests/worker/${user.id}`);
       
-      if (!response.ok) {
-        throw new Error('API not available');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched worker tasks:', data.tasks);
+        
+        // Convert to expected format
+        const convertedTasks = data.tasks.map(task => ({
+          id: task.id,
+          customer: task.customer,
+          service: task.service,
+          category: 'service',
+          status: task.status === 'worker-assigned' ? 'assigned' : 
+                  task.status === 'in-progress' ? 'in_progress' : 
+                  task.status === 'completed' ? 'completed' : 'assigned',
+          date: task.date,
+          time: task.time,
+          location: task.location,
+          distance: '2.5 km', // Default distance
+          description: task.description,
+          charges: { service: 150, variable: 50, parts: 200, total: 400 },
+          progress: task.status === 'worker-assigned' ? 'assigned' : 
+                   task.status === 'in-progress' ? 'start_service' : 
+                   task.status === 'completed' ? 'done' : 'assigned',
+          priority: task.priority
+        }));
+        
+        setTasks(convertedTasks);
+      } else {
+        console.log('No assigned tasks found, using mock data');
+        setTasks(mockTasks);
       }
-      
-      const data = await response.json();
-      setTasks(data.tasks || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
-      // Use mock data as fallback
       setTasks(mockTasks);
     } finally {
       setLoading(false);
@@ -888,6 +920,15 @@ const WorkerDashboard = () => {
               <span className="text-sm text-gray-300">{user?.firstName}</span>
             </div>
 
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.location.href = '/worker-tasks'}
+              className="text-blue-400 border-blue-400 hover:bg-blue-400 hover:text-white"
+            >
+              My Tasks
+            </Button>
+            
             <Button variant="outline" onClick={logout} className="text-red-400 border-red-400 hover:bg-red-400 hover:text-white transition-colors">
               <LogOut className="h-4 w-4 mr-1" />
               Logout
