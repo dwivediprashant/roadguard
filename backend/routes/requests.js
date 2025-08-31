@@ -115,41 +115,6 @@ router.patch('/:requestId/status', async (req, res) => {
   }
 });
 
-// Test assignment endpoint
-router.post('/test-assign', async (req, res) => {
-  try {
-    const { workerId } = req.body;
-    console.log('=== ASSIGNMENT NOTIFICATION ===');
-    console.log('Worker ID:', workerId);
-    
-    const io = req.app.get('io');
-    console.log('IO instance available:', !!io);
-    
-    if (io) {
-      const notificationData = {
-        id: Date.now().toString(),
-        type: 'task_assigned',
-        title: 'New Task Assigned!',
-        message: 'Admin has assigned you a new service task. Check your dashboard for details.',
-        workerId: workerId,
-        timestamp: new Date().toISOString()
-      };
-      
-      console.log('Sending notification:', notificationData);
-      console.log('To room:', `user_${workerId}`);
-      
-      io.to(`user_${workerId}`).emit('new_notification', notificationData);
-      console.log('Notification sent successfully');
-    }
-    
-    console.log('===============================');
-    res.json({ message: 'Worker assigned successfully', workerId });
-  } catch (error) {
-    console.error('Assignment error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
 // Assign worker to request
 router.patch('/:requestId/assign', async (req, res) => {
   try {
@@ -347,18 +312,23 @@ router.get('/service-requests/user/:userId', async (req, res) => {
 router.get('/worker/:workerId', async (req, res) => {
   try {
     const { workerId } = req.params;
+    console.log('=== FETCHING TASKS FOR WORKER ===');
+    console.log('Worker ID:', workerId);
     
     const requests = await Request.find({ mechanicId: workerId })
       .populate('userId', 'firstName lastName email phone')
       .populate('adminId', 'firstName lastName')
       .sort({ createdAt: -1 });
 
+    console.log('Found requests:', requests.length);
+    console.log('Requests:', requests.map(r => ({ id: r._id, mechanicId: r.mechanicId, status: r.status })));
+
     const workerTasks = await Promise.all(
       requests.map(async (request) => {
         const shop = await Shop.findOne({ shopId: request.shopId });
         return {
           id: request._id,
-          customer: `${request.userId.firstName} ${request.userId.lastName}`,
+          customer: request.userId ? `${request.userId.firstName} ${request.userId.lastName}` : 'Test Customer',
           service: request.message,
           status: request.status,
           date: request.preferredDate || request.createdAt.toLocaleDateString(),
@@ -372,6 +342,7 @@ router.get('/worker/:workerId', async (req, res) => {
       })
     );
 
+    console.log('Returning tasks:', workerTasks.length);
     res.json({ tasks: workerTasks });
   } catch (error) {
     console.error('Get worker tasks error:', error);

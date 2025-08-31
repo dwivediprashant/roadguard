@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 
 interface ServiceRequest {
-  _id: string;
+  id: string;
+  _id?: string;
   userId: string;
   userName: string;
   serviceName: string;
@@ -21,7 +22,7 @@ interface ServiceRequest {
   preferredTime: string;
   location: string;
   issueDescription: string;
-  quotation: {
+  quotation?: {
     serviceCharges: number;
     variableCosts: number;
     sparePartsCosts: number;
@@ -118,45 +119,38 @@ const AdminServiceRequests = () => {
   };
 
   const assignWorker = async (requestId: string, workerId: string) => {
-    console.log('Assigning worker:', workerId, 'to request:', requestId);
-    
-    // Show success immediately
-    toast({ title: "Success", description: "Worker assigned successfully!" });
-    setAssignDialogOpen(false);
-    setRequestToAssign(null);
-    
-    // Send notification to worker
     try {
-      await fetch('http://localhost:3001/api/requests/test-assign', {
-        method: 'POST',
+      console.log('Assigning worker:', { requestId, workerId });
+      
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/assign`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workerId })
+        body: JSON.stringify({ workerId, status: 'worker-assigned' })
       });
-      console.log('Notification sent to worker:', workerId);
+      
+      console.log('Assignment response status:', response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Assignment successful:', result);
+        toast({ title: "Success", description: "Worker assigned successfully!" });
+        setAssignDialogOpen(false);
+        setRequestToAssign(null);
+        fetchServiceRequests();
+      } else {
+        const errorData = await response.text();
+        console.error('Assignment failed:', response.status, errorData);
+        toast({ title: "Error", description: `Failed to assign worker: ${response.status}`, variant: "destructive" });
+      }
     } catch (error) {
-      console.log('Failed to send notification');
+      console.error('Assignment error:', error);
+      toast({ title: "Error", description: "Network error during assignment", variant: "destructive" });
     }
   };
 
   const openAssignDialog = async (request: ServiceRequest) => {
-    console.log('Opening assign dialog for request:', request);
     setRequestToAssign(request);
     setAssignDialogOpen(true);
-    
-    // Create test worker for testing
-    try {
-      const response = await fetch('http://localhost:3001/api/workers/create-test-worker', {
-        method: 'POST'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Test worker created:', data);
-      }
-    } catch (error) {
-      console.log('Failed to create test worker:', error);
-    }
-    
-    // Fetch latest data when dialog opens
     fetchOnlineWorkers();
     fetchWorkers();
   };
@@ -387,7 +381,13 @@ const AdminServiceRequests = () => {
                         onClick={() => {
                           console.log('Assigning to worker:', worker._id);
                           console.log('Request to assign:', requestToAssign);
-                          assignWorker(requestToAssign?._id || '', worker._id);
+                          console.log('Request ID:', requestToAssign?.id || requestToAssign?._id);
+                          const requestId = requestToAssign?.id || requestToAssign?._id;
+                          if (requestId) {
+                            assignWorker(requestId, worker._id);
+                          } else {
+                            console.error('No request ID found');
+                          }
                         }}
                       >
                         <div className="flex items-center space-x-3">

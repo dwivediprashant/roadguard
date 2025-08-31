@@ -186,19 +186,33 @@ const WorkerDashboard = () => {
       socket.on('new_notification', (notification) => {
         console.log('Worker received notification:', notification);
         
-        // Show toast notification
-        toast({
-          title: notification.title || 'New Task Assigned',
-          description: notification.message || 'You have been assigned a new task',
-        });
+        // Check if notification already exists to prevent duplicates
+        const notificationId = notification.id || notification.workerId + '_' + Date.now();
         
-        // Add to popup notifications
-        setPopupNotifications(prev => [...prev, {
-          id: Date.now().toString(),
-          title: notification.title || 'New Task Assigned',
-          message: notification.message || 'You have been assigned a new task',
-          time: new Date().toLocaleTimeString()
-        }]);
+        setPopupNotifications(prev => {
+          // Check if this notification already exists
+          const exists = prev.some(n => n.id === notificationId || 
+            (n.title === notification.title && n.message === notification.message));
+          
+          if (exists) {
+            console.log('Duplicate notification prevented');
+            return prev;
+          }
+          
+          // Show toast notification only for new notifications
+          toast({
+            title: notification.title || 'New Task Assigned',
+            description: notification.message || 'You have been assigned a new task',
+          });
+          
+          // Add new notification
+          return [...prev, {
+            id: notificationId,
+            title: notification.title || 'New Task Assigned',
+            message: notification.message || 'You have been assigned a new task',
+            time: new Date().toLocaleTimeString()
+          }];
+        });
         
         // Refresh tasks to show the new assignment
         fetchTasks();
@@ -215,11 +229,13 @@ const WorkerDashboard = () => {
 
   const setWorkerOnline = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch('http://localhost:3001/api/workers/online', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (user?.id) {
+        await fetch('http://localhost:3001/api/workers/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+      }
     } catch (error) {
       console.error('Error setting worker online:', error);
     }
@@ -227,11 +243,13 @@ const WorkerDashboard = () => {
 
   const setWorkerOffline = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch('http://localhost:3001/api/workers/offline', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (user?.id) {
+        await fetch('http://localhost:3001/api/workers/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+      }
     } catch (error) {
       console.error('Error setting worker offline:', error);
     }

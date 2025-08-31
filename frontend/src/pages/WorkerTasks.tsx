@@ -29,13 +29,28 @@ const WorkerTasks = () => {
   useEffect(() => {
     if (user?.id) {
       fetchTasks();
+      setWorkerOnline();
     }
   }, [user?.id]);
+
+  const setWorkerOnline = async () => {
+    try {
+      if (user?.id) {
+        await fetch('http://localhost:3001/api/workers/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+      }
+    } catch (error) {
+      console.error('Error setting worker online:', error);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/requests/worker/${user?.id}`);
+      const response = await fetch(`http://localhost:3001/api/workers/tasks/${user?.id}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -44,12 +59,13 @@ const WorkerTasks = () => {
         setTasks([]);
       }
     } catch (error) {
-      console.error('Error fetching tasks:', error);
       setTasks([]);
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const getStatusColor = (status: string) => {
     switch (status) {

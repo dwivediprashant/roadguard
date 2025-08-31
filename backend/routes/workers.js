@@ -9,6 +9,42 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Workers route is working!' });
 });
 
+// Get tasks for worker
+router.get('/tasks/:workerId', async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const Request = (await import('../models/Request.js')).default;
+    const Shop = (await import('../models/Shop.js')).default;
+    
+    const requests = await Request.find({ mechanicId: workerId })
+      .populate('userId', 'firstName lastName')
+      .sort({ createdAt: -1 });
+
+    const tasks = await Promise.all(
+      requests.map(async (request) => {
+        const shop = await Shop.findOne({ shopId: request.shopId });
+        return {
+          id: request._id,
+          customer: request.userId ? `${request.userId.firstName} ${request.userId.lastName}` : request.userName || 'Customer',
+          service: request.message,
+          status: request.status,
+          date: request.preferredDate || new Date(request.createdAt).toISOString().split('T')[0],
+          time: request.preferredTime || 'Not specified',
+          location: request.location,
+          description: request.issueDescription || request.message,
+          workshopName: shop?.shopName || 'Workshop',
+          priority: request.urgency || 'medium',
+          createdAt: request.createdAt
+        };
+      })
+    );
+
+    res.json({ tasks });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Store logged-in workers with timestamps
 export let loggedInWorkers = new Map(); // userId -> { loginTime, lastActivity }
 
@@ -40,10 +76,11 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'User ID required' });
     }
     
-    // Add worker to logged-in list
+    // Add worker to logged-in list - PERMANENT until logout
     loggedInWorkers.set(userId, {
       loginTime: Date.now(),
-      lastActivity: Date.now()
+      lastActivity: Date.now(),
+      permanent: true
     });
     
     console.log(`Worker logged in: ${userId}`);
@@ -137,7 +174,7 @@ router.get('/shop/:shopId', async (req, res) => {
     // Add online status to each worker
     const workersWithStatus = workers.map(worker => ({
       ...worker.toObject(),
-      isOnline: onlineWorkers.has(worker._id.toString())
+      isOnline: loggedInWorkers.has(worker._id.toString())
     }));
     
     res.json(workersWithStatus);
