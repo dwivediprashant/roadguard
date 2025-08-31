@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
 import Worker from '../models/Worker.js';
 import Shop from '../models/Shop.js';
+import Review from '../models/Review.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -209,6 +210,96 @@ router.post('/worker-signup', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Send OTP for login
+router.post('/send-otp', [
+  body('phone').notEmpty().withMessage('Phone number is required')
+], async (req, res) => {
+  try {
+    const { phone } = req.body;
+    
+    // Generate 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    
+    // Find or create user with phone
+    let user = await User.findOne({ phone });
+    if (!user) {
+      // Create temporary user for OTP verification
+      user = new User({
+        phone,
+        firstName: 'User',
+        lastName: '',
+        email: `${phone}@temp.com`,
+        password: 'temp123',
+        userType: 'user',
+        verificationOTP: otp,
+        verificationExpiry: otpExpiry,
+        isVerified: false
+      });
+      await user.save();
+    } else {
+      // Update existing user with new OTP
+      user.verificationOTP = otp;
+      user.verificationExpiry = otpExpiry;
+      await user.save();
+    }
+    
+    console.log(`OTP for ${phone}: ${otp}`);
+    
+    res.json({
+      message: 'OTP sent successfully',
+      otp: otp // Remove in production
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify OTP and login
+router.post('/verify-otp', [
+  body('phone').notEmpty().withMessage('Phone number is required'),
+  body('otp').isLength({ min: 4, max: 4 }).withMessage('OTP must be 4 digits')
+], async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (!user.verificationOTP || user.verificationExpiry < new Date()) {
+      return res.status(400).json({ error: 'OTP expired' });
+    }
+    
+    if (user.verificationOTP !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+    
+    // Clear OTP and mark as verified
+    user.verificationOTP = undefined;
+    user.verificationExpiry = undefined;
+    user.isVerified = true;
+    await user.save();
+    
+    const token = generateToken(user._id);
+    
+    res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        userType: user.userType
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -585,6 +676,164 @@ router.post('/test-resend', async (req, res) => {
     res.json({ success: true, result });
   } catch (error) {
     console.error('Test email error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Submit Review
+router.post('/reviews', authenticate, [
+  body('workshopId').notEmpty().withMessage('Workshop ID is required'),
+  body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5'),
+  body('comment').notEmpty().withMessage('Comment is required')
+], async (req, res) => {
+  try {
+    const { workshopId, rating, comment, serviceRequestId, images } = req.body;
+    
+    const review = new Review({
+      userId: req.user._id,
+      workshopId,
+      rating,
+      comment,
+      serviceRequestId,
+      images: images || []
+    });
+    
+    await review.save();
+    
+    // Populate user data for response
+    await review.populate('userId', 'firstName lastName');
+    
+    res.status(201).json({
+      message: 'Review submitted successfully',
+      review: {
+        id: review._id,
+        userName: `${review.userId.firstName} ${review.userId.lastName}`,
+        rating: review.rating,
+        comment: review.comment,
+        date: review.createdAt.toLocaleDateString(),
+        badge: rating >= 5 ? 'Excellent' : rating >= 4 ? 'Very good service' : 'Good'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Reviews for Workshop
+router.get('/reviews/:workshopId', async (req, res) => {
+  try {
+    const { workshopId } = req.params;
+    
+    const reviews = await Review.find({ workshopId })
+      .populate('userId', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .limit(50);
+    
+    const formattedReviews = reviews.map(review => ({
+      id: review._id,
+      userName: `${review.userId.firstName} ${review.userId.lastName}`,
+      rating: review.rating,
+      comment: review.comment,
+      date: review.createdAt.toLocaleDateString(),
+      badge: review.rating >= 5 ? 'Excellent' : 
+             review.rating >= 4 ? 'Very good service' : 
+             review.rating >= 3 ? 'Good' : 'Average'
+    }));
+    
+    res.json({ reviews: formattedReviews });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Worker Profile
+router.get('/worker/:workerId', async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    
+    const worker = await User.findById(workerId)
+      .select('-password -resetPasswordOTP -resetPasswordExpiry');
+    
+    if (!worker || worker.userType !== 'worker') {
+      return res.status(404).json({ error: 'Worker not found' });
+    }
+    
+    // Get worker's completed requests for stats
+    const completedJobs = await Request.countDocuments({ 
+      mechanicId: workerId, 
+      status: 'completed' 
+    });
+    
+    const workerProfile = {
+      id: worker._id,
+      firstName: worker.firstName,
+      lastName: worker.lastName,
+      email: worker.email,
+      phone: worker.phone,
+      profileImage: worker.profileImage,
+      specialties: worker.specialties || ['Engine Repair', 'Brake Service', 'Oil Change'],
+      experience: worker.experience || 5,
+      rating: worker.rating || 4.5,
+      completedJobs,
+      availability: worker.availability || 'Available',
+      location: worker.location || 'Workshop Location',
+      bio: worker.bio || 'Experienced automotive technician',
+      certifications: worker.certifications || ['ASE Certified']
+    };
+    
+    res.json(workerProfile);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Admin Profile
+router.get('/admin/:adminId', async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    
+    const admin = await User.findById(adminId)
+      .select('-password -resetPasswordOTP -resetPasswordExpiry');
+    
+    if (!admin || admin.userType !== 'admin') {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+    
+    // Get shop details
+    const shop = await Shop.findOne({ adminId: admin._id });
+    
+    // Get completed services count
+    const completedServices = await Request.countDocuments({ 
+      adminId: admin._id, 
+      status: 'completed' 
+    });
+    
+    // Get total workers count
+    const totalWorkers = await User.countDocuments({ 
+      userType: 'worker', 
+      shopId: shop?.shopId 
+    });
+    
+    const adminProfile = {
+      id: admin._id,
+      firstName: admin.firstName,
+      lastName: admin.lastName,
+      email: admin.email,
+      phone: admin.phone,
+      profileImage: admin.profileImage,
+      shopName: shop?.shopName || admin.shopName || 'Workshop',
+      shopId: shop?.shopId || 'N/A',
+      location: admin.location || 'Workshop Location',
+      bio: admin.bio || 'Experienced workshop owner committed to quality service',
+      experience: admin.experience || 10,
+      rating: admin.rating || 4.5,
+      totalWorkers,
+      completedServices,
+      joinedDate: admin.createdAt
+    };
+    
+    res.json(adminProfile);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

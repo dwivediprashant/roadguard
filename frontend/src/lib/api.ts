@@ -39,6 +39,8 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (userData: any) => api.post('/auth/register', userData),
   login: (credentials: any) => api.post('/auth/login', credentials),
+  sendOTP: (phone: string) => api.post('/auth/send-otp', { phone }),
+  verifyOTP: (phone: string, otp: string) => api.post('/auth/verify-otp', { phone, otp }),
   workerLogin: (credentials: any) => api.post('/auth/worker-login', credentials),
   userLogin: (credentials: any) => api.post('/auth/user-login', credentials),
   adminSignup: (adminData: any) => api.post('/auth/admin-signup', adminData),
@@ -47,6 +49,10 @@ export const authAPI = {
   updateProfile: (profileData: any) => api.put('/auth/profile', profileData),
   getShopInfo: (shopId: string) => api.get(`/auth/shop/${shopId}`),
   getShopWorkers: (shopId: string) => api.get(`/auth/shop/${shopId}/workers`),
+  submitReview: (reviewData: any) => api.post('/auth/reviews', reviewData),
+  getReviews: (workshopId: string) => api.get(`/auth/reviews/${workshopId}`),
+  getWorkerProfile: (workerId: string) => api.get(`/auth/worker/${workerId}`),
+  getAdminProfile: (adminId: string) => api.get(`/auth/admin/${adminId}`),
 };
 
 export const adminAPI = {
@@ -69,6 +75,11 @@ export const requestAPI = {
   getAll: () => api.get('/requests'),
   create: (requestData: any) => api.post('/requests', requestData),
   update: (id: string, requestData: any) => api.put(`/requests/${id}`, requestData),
+  getShops: () => api.get('/requests/shops'),
+  createServiceRequest: (requestData: any) => api.post('/requests/service-requests', requestData),
+  getUserRequests: (userId: string) => api.get(`/requests/user/${userId}`),
+  deleteRequest: (requestId: string) => api.delete(`/requests/${requestId}`),
+  getServiceTracking: (userId: string) => api.get(`/requests/service-tracking/user/${userId}`),
 };
 
 export const workshopAPI = {

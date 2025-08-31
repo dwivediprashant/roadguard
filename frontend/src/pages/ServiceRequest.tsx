@@ -24,7 +24,6 @@ const ServiceRequest = () => {
     description: '',
     serviceType: '',
     date: '',
-    time: '',
     location: '',
     issue: '',
     images: [] as File[]
@@ -111,32 +110,18 @@ const ServiceRequest = () => {
                   </Select>
                 </div>
 
-                {/* Service Time */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-white mb-2 block flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Date
-                    </Label>
-                    <Input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className="bg-gray-700 border-gray-600 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-white mb-2 block flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Time
-                    </Label>
-                    <Input
-                      type="time"
-                      value={formData.time}
-                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                      className="bg-gray-700 border-gray-600 text-white"
-                    />
-                  </div>
+                {/* Service Date */}
+                <div>
+                  <Label className="text-white mb-2 block flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Preferred Date
+                  </Label>
+                  <Input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="bg-gray-700 border-gray-600 text-white"
+                  />
                 </div>
 
                 {/* Location */}
@@ -245,10 +230,7 @@ const ServiceRequest = () => {
                     <span className="text-gray-400">Date:</span>
                     <span className="text-white">{formData.date || 'Not set'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Time:</span>
-                    <span className="text-white">{formData.time || 'Not set'}</span>
-                  </div>
+
                   <div className="flex justify-between">
                     <span className="text-gray-400">Images:</span>
                     <span className="text-white">{formData.images.length} uploaded</span>

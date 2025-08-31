@@ -65,17 +65,21 @@ router.post('/send', async (req, res) => {
 router.get('/admin/:adminId', async (req, res) => {
   try {
     const { adminId } = req.params;
+    console.log('Fetching requests for admin ID:', adminId);
     
     const requests = await Request.find({ adminId })
       .populate('userId', 'firstName lastName email phone')
       .populate('mechanicId', 'firstName lastName email phone')
       .sort({ createdAt: -1 });
+      
+    console.log('Found requests count:', requests.length);
+    console.log('Request adminIds:', requests.map(r => r.adminId));
 
     const adminRequests = requests.map(request => ({
       id: request._id,
-      userName: `${request.userId.firstName} ${request.userId.lastName}`,
-      userEmail: request.userId.email,
-      userPhone: request.userId.phone,
+      userName: request.userId ? `${request.userId.firstName} ${request.userId.lastName}` : request.userName || 'Unknown User',
+      userEmail: request.userId?.email || 'N/A',
+      userPhone: request.userId?.phone || 'N/A',
       serviceName: request.message,
       serviceType: request.serviceType,
       status: request.status,
@@ -207,10 +211,12 @@ router.post('/service-requests', async (req, res) => {
       userName,
       serviceType,
       preferredDate,
-      preferredTime,
       issueDescription,
       chatWithAgent
     });
+    
+    console.log('Creating request with adminId:', adminId);
+    console.log('Request object before save:', request);
 
     console.log('Saving request:', request);
     await request.save();
@@ -220,7 +226,7 @@ router.post('/service-requests', async (req, res) => {
     console.log('Creating notification for admin:', adminId);
     const notification = new Notification({
       userId: adminId,
-      type: 'request_received',
+      type: 'task_assigned',
       title: 'New Service Request',
       message: `New ${serviceType} request from ${userName || 'User'}`,
       requestId: request._id
@@ -408,6 +414,66 @@ router.get('/user/:userId', async (req, res) => {
     res.json({ requests: userRequests });
   } catch (error) {
     console.error('Get user requests error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update service request status
+router.patch('/service-requests/:requestId/status', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { status, assignedWorker, notes } = req.body;
+    
+    const request = await Request.findByIdAndUpdate(
+      requestId,
+      { 
+        status,
+        ...(assignedWorker && { assignedWorker }),
+        ...(notes && { adminNotes: notes })
+      },
+      { new: true }
+    );
+    
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+    
+    res.json({ message: 'Status updated successfully', request });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get service tracking for user
+router.get('/service-tracking/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const requests = await Request.find({ userId })
+      .populate('adminId', 'firstName lastName phone')
+      .populate('mechanicId', 'firstName lastName phone')
+      .sort({ createdAt: -1 });
+    
+    const trackingData = requests.map(request => ({
+      id: request._id,
+      serviceName: request.message,
+      status: request.status,
+      workshopName: 'Auto Service Center', // You can populate this from Shop model
+      assignedAgent: request.mechanicId ? 
+        `${request.mechanicId.firstName} ${request.mechanicId.lastName}` : 
+        request.adminId ? `${request.adminId.firstName} ${request.adminId.lastName}` : null,
+      agentPhone: request.mechanicId?.phone || request.adminId?.phone,
+      createdAt: request.createdAt,
+      estimatedCompletion: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+      progress: {
+        pending: request.status === 'pending' ? 100 : 0,
+        inProgress: ['admin-reviewing', 'worker-assigned', 'in-progress'].includes(request.status) ? 50 : 0,
+        completed: request.status === 'completed' ? 100 : 0
+      }
+    }));
+    
+    res.json({ tracking: trackingData });
+  } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

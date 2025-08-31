@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   MapPin, Phone, Mail, Star, Send, ArrowLeft, 
   Facebook, Twitter, Linkedin, Instagram, Wrench, Car, Settings
@@ -59,7 +60,14 @@ const WorkshopDetail = () => {
     }
   };
 
+  const { user } = useAuth();
+
   const handleBookService = () => {
+    if (!user) {
+      // Redirect to OTP login with return path
+      navigate('/otp-login', { state: { from: `/service-request/${workshopId}` } });
+      return;
+    }
     navigate(`/service-request/${workshopId}`);
   };
 
@@ -92,9 +100,21 @@ const WorkshopDetail = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            Login
-          </Button>
+          {!user ? (
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => navigate('/otp-login')}
+            >
+              Login
+            </Button>
+          ) : (
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/user-dashboard')}
+            >
+              Dashboard
+            </Button>
+          )}
         </div>
       </div>
 
@@ -284,6 +304,31 @@ const WorkshopDetail = () => {
                     <span className="text-gray-400">Workers</span>
                     <span className="text-white">{workshop.mechanics.length}</span>
                   </div>
+                  {workshop.mechanics.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-400 mb-2">Available Workers</h4>
+                      <div className="space-y-2">
+                        {workshop.mechanics.slice(0, 3).map((mechanic: any, index: number) => (
+                          <Button
+                            key={index}
+                            variant="ghost"
+                            className="w-full justify-start text-left p-2 h-auto"
+                            onClick={() => navigate(`/worker/${mechanic._id}`)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-xs">
+                                {mechanic.firstName?.[0]}{mechanic.lastName?.[0]}
+                              </div>
+                              <div>
+                                <p className="text-sm text-white">{mechanic.firstName} {mechanic.lastName}</p>
+                                <p className="text-xs text-gray-400">View Profile</p>
+                              </div>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

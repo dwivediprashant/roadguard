@@ -31,6 +31,9 @@ const WorkerSignup = lazy(() => import("./pages/WorkerSignup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const OTPVerification = lazy(() => import("./pages/OTPVerification"));
+const WorkerProfile = lazy(() => import("./pages/WorkerProfile"));
+const AdminProfile = lazy(() => import("./pages/AdminProfile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -95,6 +98,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                <Route path="/otp-login" element={<OTPVerification />} />
                 <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
                 <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -114,7 +118,10 @@ const App = () => (
 
                 <Route path="/user" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="/user-dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                <Route path="/workshops" element={<WorkshopDashboard />} />
                 <Route path="/workshop/:workshopId" element={<WorkshopDetail />} />
+                <Route path="/worker/:workerId" element={<WorkerProfile />} />
+                <Route path="/admin/:adminId" element={<AdminProfile />} />
                 <Route path="/service-request/:workshopId" element={<ProtectedRoute><ServiceRequest /></ProtectedRoute>} />
                 <Route path="/my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />

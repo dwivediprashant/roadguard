@@ -8,7 +8,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['task_assigned', 'task_updated', 'task_completed'],
+    enum: ['task_assigned', 'task_updated', 'task_completed', 'request_received'],
     required: true
   },
   title: {
@@ -22,6 +22,10 @@ const notificationSchema = new mongoose.Schema({
   taskId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Task'
+  },
+  requestId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Request'
   },
   isRead: {
     type: Boolean,

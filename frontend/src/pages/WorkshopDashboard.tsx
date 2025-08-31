@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, List, Grid, Map, Star, User } from 'lucide-react';
+import { Search, List, Grid, Map, Star, User, Award, Wrench } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -55,7 +56,9 @@ const WorkshopDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [distanceFilter, setDistanceFilter] = useState('all');
   const [customDistance, setCustomDistance] = useState('');
-  const [view, setView] = useState<'list' | 'card' | 'map'>('card');
+  const [view, setView] = useState<'list' | 'card' | 'workers' | 'map'>('card');
+  const [workers, setWorkers] = useState<any[]>([]);
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -84,6 +87,19 @@ const WorkshopDashboard = () => {
       
       setWorkshops(data.workshops || []);
       setTotalPages(data.pagination?.totalPages || 1);
+      
+      // Extract workers from workshops for workers view
+      const allWorkers = (data.workshops || []).flatMap((workshop: any) => 
+        (workshop.mechanics || []).map((mechanic: any) => ({
+          ...mechanic,
+          workshopName: workshop.name,
+          workshopId: workshop._id,
+          rating: 4.0 + Math.random() * 1.0,
+          completedJobs: Math.floor(Math.random() * 100) + 20,
+          specialties: ['Engine Repair', 'Brake Service', 'Oil Change'].slice(0, Math.floor(Math.random() * 3) + 1)
+        }))
+      );
+      setWorkers(allWorkers);
     } catch (error) {
       console.error('Failed to fetch workshops:', error);
       setWorkshops([]);
@@ -183,6 +199,49 @@ const WorkshopDashboard = () => {
     </div>
   );
 
+  const WorkerCard = ({ worker }: { worker: any }) => (
+    <Card 
+      className="glass-effect border-primary/20 overflow-hidden hover:border-primary/40 transition-all duration-300 cursor-pointer group"
+      onClick={() => navigate(`/worker/${worker._id}`)}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center text-lg font-semibold">
+            {worker.firstName?.[0]}{worker.lastName?.[0]}
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+              {worker.firstName} {worker.lastName}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-2">{worker.workshopName}</p>
+            
+            <div className="flex items-center gap-4 text-sm mb-3">
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                <span className="text-foreground font-medium">{worker.rating?.toFixed(1)}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Award className="w-4 h-4 text-green-500" />
+                <span className="text-foreground">{worker.completedJobs} jobs</span>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 flex-wrap">
+              {worker.specialties?.map((specialty: string, idx: number) => (
+                <span key={idx} className="px-2 py-1 bg-secondary/20 text-secondary rounded text-xs">
+                  {specialty}
+                </span>
+              ))}
+            </div>
+          </div>
+          <Button size="sm" variant="outline" className="opacity-0 group-hover:opacity-100 transition-opacity">
+            View Profile
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -199,13 +258,23 @@ const WorkshopDashboard = () => {
             </h1>
             <p className="text-muted-foreground mt-2">Find the perfect workshop for your needs</p>
           </div>
-          <Button 
-            variant="emergency" 
-            className="emergency-glow"
-            onClick={() => window.location.href = '/login'}
-          >
-            Login
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              className="glass-effect border-primary/20"
+              onClick={() => setView('workers')}
+            >
+              <User className="w-4 h-4 mr-2" />
+              Find Workers
+            </Button>
+            <Button 
+              variant="emergency" 
+              className="emergency-glow"
+              onClick={() => window.location.href = '/otp-login'}
+            >
+              Login
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -276,6 +345,14 @@ const WorkshopDashboard = () => {
                   <Grid className="w-4 h-4" />
                 </Button>
                 <Button
+                  variant={view === 'workers' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setView('workers')}
+                  className={view === 'workers' ? 'gradient-emergency' : 'glass-effect border-primary/20'}
+                >
+                  <User className="w-4 h-4" />
+                </Button>
+                <Button
                   variant={view === 'map' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setView('map')}
@@ -315,6 +392,19 @@ const WorkshopDashboard = () => {
                   <WorkshopListItem key={workshop._id} workshop={workshop} />
                 ))}
               </Card>
+            ) : view === 'workers' ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-6">
+                  <Wrench className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">Available Workers</h2>
+                  <span className="text-muted-foreground">({workers.length} workers found)</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {workers.map(worker => (
+                    <WorkerCard key={worker._id} worker={worker} />
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {workshops.map(workshop => (
