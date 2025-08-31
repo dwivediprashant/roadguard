@@ -195,29 +195,34 @@ const UserDashboard = () => {
     console.log('Admin data:', selectedWorkshop?.admin);
     console.log('Admin ID being sent:', selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId);
 
+    const requestData = {
+      userId: user?.id,
+      workshopId: selectedWorkshop?.shopId,
+      adminId: selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId,
+      userName: bookingForm.userName || `${user?.firstName} ${user?.lastName}`,
+      serviceName: bookingForm.description,
+      serviceType: bookingForm.serviceType,
+      preferredDate: bookingForm.preferredDate,
+      preferredTime: bookingForm.preferredTime,
+      location: bookingForm.location,
+      issueDescription: bookingForm.issue,
+      preferredWorkerId: selectedMechanic,
+      chatWithAgent: bookingForm.chatWithAgent,
+      status: 'pending'
+    };
+    
+    console.log('Submitting request with data:', requestData);
+    
     try {
       const response = await fetch('http://localhost:3001/api/requests/service-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user?.id,
-          workshopId: selectedWorkshop?.shopId,
-          adminId: selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId,
-          userName: bookingForm.userName || `${user?.firstName} ${user?.lastName}`,
-          serviceName: bookingForm.description,
-          serviceType: bookingForm.serviceType,
-          preferredDate: bookingForm.preferredDate,
-          preferredTime: bookingForm.preferredTime,
-          location: bookingForm.location,
-          issueDescription: bookingForm.issue,
-          preferredWorkerId: selectedMechanic,
-          chatWithAgent: bookingForm.chatWithAgent,
-          status: 'pending'
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {
         const savedRequest = await response.json();
+        console.log('Request submitted successfully:', savedRequest);
         toast({ 
           title: "Success", 
           description: "Request sent to admin successfully! Redirecting to My Requests..."
@@ -229,6 +234,10 @@ const UserDashboard = () => {
         setTimeout(() => {
           navigate('/my-requests');
         }, 1500);
+      } else {
+        const errorData = await response.text();
+        console.error('Request submission failed:', response.status, errorData);
+        toast({ title: "Error", description: `Failed to submit request: ${response.status}`, variant: "destructive" });
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to submit request", variant: "destructive" });
@@ -494,6 +503,13 @@ const UserDashboard = () => {
         </div>
         
         <div className="flex gap-2">
+          <Button 
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/workshop/${workshop.shopId}`)}
+          >
+            View Details
+          </Button>
           <Button 
             size="sm"
             onClick={() => {
