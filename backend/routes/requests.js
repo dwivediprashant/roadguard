@@ -308,6 +308,29 @@ router.get('/service-requests/user/:userId', async (req, res) => {
   }
 });
 
+// Delete a request
+router.delete('/:requestId', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    const request = await Request.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+    
+    // Only allow deletion of pending requests
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending requests can be deleted' });
+    }
+    
+    await Request.findByIdAndDelete(requestId);
+    res.json({ message: 'Request deleted successfully' });
+  } catch (error) {
+    console.error('Delete request error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get assigned tasks for worker
 router.get('/worker/:workerId', async (req, res) => {
   try {

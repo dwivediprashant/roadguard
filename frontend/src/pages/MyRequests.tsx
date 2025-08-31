@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Clock, MapPin, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, AlertCircle, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 interface Request {
@@ -26,8 +27,10 @@ interface Request {
 const MyRequests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRequests();
@@ -67,6 +70,34 @@ const MyRequests = () => {
       case 'medium': return 'text-yellow-500';
       case 'low': return 'text-green-500';
       default: return 'text-gray-500';
+    }
+  };
+
+  const deleteRequest = async (requestId: string) => {
+    if (!confirm('Are you sure you want to delete this request?')) return;
+    
+    setDeleting(requestId);
+    try {
+      console.log('Deleting request:', requestId);
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}`, {
+        method: 'DELETE'
+      });
+      
+      console.log('Delete response status:', response.status);
+      
+      if (response.ok) {
+        setRequests(prev => prev.filter(req => req.id !== requestId));
+        toast({ title: "Success", description: "Request deleted successfully" });
+      } else {
+        const errorText = await response.text();
+        console.error('Delete failed:', response.status, errorText);
+        toast({ title: "Error", description: `Failed to delete request: ${response.status}`, variant: "destructive" });
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({ title: "Error", description: "Network error during deletion", variant: "destructive" });
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -118,7 +149,7 @@ const MyRequests = () => {
                       </CardTitle>
                       <p className="text-white/70 mt-1">{request.workshopName}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <Badge className={`${getStatusColor(request.status)} text-white`}>
                         {request.status.replace('-', ' ').toUpperCase()}
                       </Badge>
@@ -126,6 +157,17 @@ const MyRequests = () => {
                         <AlertCircle className="h-3 w-3 mr-1" />
                         {request.urgency.toUpperCase()}
                       </Badge>
+                      {request.status === 'pending' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRequest(request.id)}
+                          disabled={deleting === request.id}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
