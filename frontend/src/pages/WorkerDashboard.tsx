@@ -929,7 +929,11 @@ const WorkerDashboard = () => {
             </div>
 
             {/* User Profile */}
-            <div className="flex items-center space-x-2">
+            <div 
+              className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => window.location.href = '/profile'}
+              title="View Profile"
+            >
               <Avatar className="w-8 h-8">
                 <AvatarFallback className="bg-gray-700 text-white">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
@@ -1091,7 +1095,13 @@ const WorkerDashboard = () => {
                       <User className="h-4 w-4 mr-2" />
                       Customer Information
                     </h3>
-                    <p className="text-gray-300 font-medium">{selectedTask.customer}</p>
+                    <p 
+                      className="text-gray-300 font-medium cursor-pointer hover:text-blue-400 transition-colors"
+                      onClick={() => window.open('/profile', '_blank')}
+                      title="View customer profile"
+                    >
+                      {selectedTask.customer}
+                    </p>
                     <p className="text-sm text-gray-400">{selectedTask.service}</p>
                     <Badge className={`mt-2 ${selectedTask.priority === 'high' ? 'bg-red-500' : selectedTask.priority === 'medium' ? 'bg-orange-500' : 'bg-green-500'} text-white`}>
                       {selectedTask.priority} priority

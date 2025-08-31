@@ -1,36 +1,34 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { authAPI } from '@/lib/api';
-import { 
-  ArrowLeft, Star, MapPin, Phone, Mail, Clock, 
-  Wrench, Award, Calendar, MessageCircle
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { User, MapPin, Phone, Mail, Star, Calendar, Wrench } from 'lucide-react';
 
-interface Worker {
-  id: string;
+interface WorkerProfile {
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
   profileImage?: string;
-  specialties: string[];
-  experience: number;
-  rating: number;
-  completedJobs: number;
-  availability: string;
-  location: string;
-  bio: string;
-  certifications: string[];
+  bio?: string;
+  location?: string;
+  createdAt: string;
+  workHistory?: Array<{
+    position: string;
+    company: string;
+    startDate: string;
+    endDate: string;
+    description: string;
+    isCurrent: boolean;
+  }>;
 }
 
 const WorkerProfile = () => {
   const { workerId } = useParams();
-  const navigate = useNavigate();
-  const [worker, setWorker] = useState<Worker | null>(null);
+  const [worker, setWorker] = useState<WorkerProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,187 +36,170 @@ const WorkerProfile = () => {
   }, [workerId]);
 
   const fetchWorkerProfile = async () => {
+    if (!workerId) {
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const response = await authAPI.getWorkerProfile(workerId!);
-      setWorker(response.data);
+      const response = await fetch(`http://localhost:3001/api/auth/worker-profile/${workerId}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        setWorker(data.worker);
+      } else {
+        console.error('Failed to fetch worker profile:', response.status);
+      }
     } catch (error) {
-      console.error('Failed to fetch worker profile:', error);
+      console.error('Error fetching worker profile:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRequestService = () => {
-    navigate(`/service-request/workshop1?workerId=${workerId}`);
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading worker profile...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   if (!worker) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Worker not found</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Worker not found</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="text-white hover:bg-gray-700"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="mb-8">
           <Button 
-            className="bg-purple-600 hover:bg-purple-700"
-            onClick={handleRequestService}
+            variant="outline" 
+            onClick={() => window.close()}
+            className="mb-4"
           >
-            Request Service
+            ← Close
           </Button>
+          <h1 className="text-3xl font-bold text-gray-900">Worker Profile</h1>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Profile Header */}
-        <Card className="bg-gray-800 border-gray-700 mb-8">
-          <CardContent className="p-8">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={worker.profileImage} />
-                <AvatarFallback className="bg-purple-600 text-white text-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Profile Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <Avatar className="w-32 h-32 mx-auto">
+                <AvatarImage src={worker.profileImage} alt="Profile" />
+                <AvatarFallback className="text-2xl bg-blue-100">
                   {worker.firstName[0]}{worker.lastName[0]}
                 </AvatarFallback>
               </Avatar>
               
-              <div className="flex-1 text-center md:text-left">
-                <h1 className="text-3xl font-bold text-white mb-2">
-                  {worker.firstName} {worker.lastName}
-                </h1>
-                <p className="text-gray-300 mb-4">{worker.bio}</p>
-                
-                <div className="flex flex-wrap gap-4 justify-center md:justify-start mb-4">
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span className="text-white font-medium">{worker.rating}</span>
-                    <span className="text-gray-400">rating</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Award className="h-4 w-4 text-green-400" />
-                    <span className="text-white">{worker.completedJobs}</span>
-                    <span className="text-gray-400">jobs completed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-400" />
-                    <span className="text-white">{worker.experience}</span>
-                    <span className="text-gray-400">years experience</span>
-                  </div>
-                </div>
-
-                <Badge 
-                  variant={worker.availability === 'Available' ? 'default' : 'secondary'}
-                  className={worker.availability === 'Available' ? 'bg-green-600' : 'bg-gray-600'}
-                >
-                  {worker.availability}
+              <div>
+                <h2 className="text-xl font-bold">{worker.firstName} {worker.lastName}</h2>
+                <Badge className="bg-blue-100 text-blue-800 mt-2">
+                  <Wrench className="h-3 w-3 mr-1" />
+                  Worker
                 </Badge>
               </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Specialties */}
-            <Card className="bg-gray-800 border-gray-700">
+              {worker.bio && (
+                <p className="text-gray-600 text-sm">{worker.bio}</p>
+              )}
+
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Mail className="h-4 w-4" />
+                  {worker.email}
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Phone className="h-4 w-4" />
+                  {worker.phone}
+                </div>
+                {worker.location && (
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <MapPin className="h-4 w-4" />
+                    {worker.location}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Calendar className="h-4 w-4" />
+                  Member since {new Date(worker.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Work History */}
+          <div className="lg:col-span-2">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
                   <Wrench className="h-5 w-5" />
-                  Specialties
+                  Work Experience
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  {worker.specialties.map((specialty, index) => (
-                    <div key={index} className="bg-gray-700 rounded-lg p-3 text-center">
-                      <span className="text-gray-300">{specialty}</span>
-                    </div>
-                  ))}
-                </div>
+                {worker.workHistory && worker.workHistory.length > 0 ? (
+                  <div className="space-y-4">
+                    {worker.workHistory.map((work, index) => (
+                      <div key={index} className="border-l-4 border-blue-500 pl-4 pb-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-900">{work.position}</h3>
+                          {work.isCurrent && (
+                            <Badge className="bg-green-100 text-green-800">Current</Badge>
+                          )}
+                        </div>
+                        <p className="text-blue-600 font-medium">{work.company}</p>
+                        <p className="text-sm text-gray-600">
+                          {work.startDate} - {work.isCurrent ? 'Present' : work.endDate}
+                        </p>
+                        {work.description && (
+                          <p className="text-gray-700 mt-2">{work.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Wrench className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-500">No work experience added yet</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Certifications */}
-            <Card className="bg-gray-800 border-gray-700">
+            {/* Skills & Rating */}
+            <Card className="mt-6">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Award className="h-5 w-5" />
-                  Certifications
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  Skills & Rating
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-600">4.8 (24 reviews)</span>
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  {worker.certifications.map((cert, index) => (
-                    <Badge key={index} className="bg-blue-600 text-white">
-                      {cert}
-                    </Badge>
+                  {['Engine Repair', 'Brake Service', 'Oil Change', 'Tire Replacement'].map((skill) => (
+                    <Badge key={skill} variant="outline">{skill}</Badge>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Contact Info */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white">Contact Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-300">{worker.phone}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-300">{worker.email}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-300">{worker.location}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  onClick={handleRequestService}
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Book Service
-                </Button>
-                <Button variant="outline" className="w-full border-gray-600 text-gray-300">
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Send Message
-                </Button>
               </CardContent>
             </Card>
           </div>

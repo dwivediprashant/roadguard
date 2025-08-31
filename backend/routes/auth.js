@@ -838,4 +838,25 @@ router.get('/admin/:adminId', async (req, res) => {
   }
 });
 
+// Get worker profile (public)
+router.get('/worker-profile/:workerId', async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    console.log('Fetching worker profile for ID:', workerId);
+    
+    const worker = await User.findById(workerId).select('-password');
+    console.log('Found worker:', worker ? 'Yes' : 'No');
+    
+    if (!worker || worker.userType !== 'worker') {
+      console.log('Worker not found or not a worker type');
+      return res.status(404).json({ error: 'Worker not found' });
+    }
+    
+    res.json({ worker });
+  } catch (error) {
+    console.error('Error in worker profile route:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
