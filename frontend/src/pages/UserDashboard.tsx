@@ -333,7 +333,6 @@ const UserDashboard = () => {
           {[
             { key: 'home', label: 'Home', icon: Home },
             { key: 'search', label: 'Find Workshops', icon: Search },
-            { key: 'tracking', label: 'Track Service', icon: Navigation },
             { key: 'history', label: 'Service History', icon: History }
           ].map(({ key, label, icon: Icon }) => (
             <Button
@@ -898,14 +897,12 @@ const UserDashboard = () => {
         );
       case 'booking':
         return renderBookingForm();
-      case 'tracking':
-        return renderServiceTracking();
       case 'history':
         return renderServiceHistory();
       default:
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => {
                 setCurrentView('search');
                 setBreadcrumbs(['Dashboard', 'Find Workshops']);
@@ -914,17 +911,6 @@ const UserDashboard = () => {
                   <Search className="h-12 w-12 mx-auto mb-4 text-primary" />
                   <h3 className="font-semibold mb-2">Find Workshops</h3>
                   <p className="text-sm text-muted-foreground">Search and filter nearby workshops</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => {
-                setCurrentView('tracking');
-                setBreadcrumbs(['Dashboard', 'Track Service']);
-              }}>
-                <CardContent className="p-6 text-center">
-                  <Navigation className="h-12 w-12 mx-auto mb-4 text-primary" />
-                  <h3 className="font-semibold mb-2">Track Service</h3>
-                  <p className="text-sm text-muted-foreground">Monitor your active service requests</p>
                 </CardContent>
               </Card>
               
