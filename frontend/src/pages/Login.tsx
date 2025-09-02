@@ -175,9 +175,13 @@ const LoginPage = () => {
                   </svg>
                   Google
                 </Button>
-                <Button variant="outline" className="glass-effect">
+                <Button 
+                  variant="outline" 
+                  className="glass-effect"
+                  onClick={() => navigate('/otp-login')}
+                >
                   <Phone className="w-5 h-5" />
-                  Phone
+                  Phone OTP
                 </Button>
               </div>
 

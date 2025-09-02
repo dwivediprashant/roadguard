@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Menu, MapPin, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
+import { Menu, MapPin, LogIn, UserPlus, LayoutDashboard, LogOut, Wrench } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -97,6 +97,13 @@ export const Navigation = () => {
             )}
           </div>
 
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center space-x-6">
+            <Link to="/workshops" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Find Workshops
+            </Link>
+          </div>
+
           {/* Auth & Mobile Menu */}
           <div className="flex items-center space-x-4">
             <ThemeToggle />
@@ -112,6 +119,12 @@ export const Navigation = () => {
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px] glass-effect">
                 <div className="flex flex-col space-y-4 mt-8">
+                  <Link to="/workshops" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start text-lg">
+                      <Wrench className="w-5 h-5 mr-3" />
+                      Find Workshops
+                    </Button>
+                  </Link>
                   {user ? (
                     <>
                       <Link to="/dashboard" onClick={() => setIsOpen(false)}>

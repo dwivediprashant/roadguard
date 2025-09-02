@@ -48,20 +48,13 @@ const AdminDashboard = () => {
       const token = localStorage.getItem('token');
       console.log('AdminDashboard: Using token', token ? 'exists' : 'missing');
       
-      const [requestsRes, usersRes] = await Promise.all([
-        fetch(`http://localhost:3001/api/requests/admin/${user.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('http://localhost:3001/api/auth/users', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+      const requestsRes = await fetch(`http://localhost:3001/api/requests/admin/${user.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
       console.log('AdminDashboard: Requests response status', requestsRes.status);
-      console.log('AdminDashboard: Users response status', usersRes.status);
 
       let requestsData = [];
-      let usersData = [];
 
       if (requestsRes.ok) {
         requestsData = await requestsRes.json();
@@ -69,18 +62,11 @@ const AdminDashboard = () => {
       } else {
         console.error('AdminDashboard: Failed to fetch requests', requestsRes.status, await requestsRes.text());
       }
-      
-      if (usersRes.ok) {
-        usersData = await usersRes.json();
-        console.log('AdminDashboard: Users data', usersData);
-      } else {
-        console.error('AdminDashboard: Failed to fetch users', usersRes.status);
-      }
 
       // Handle both array and object with requests property
       const finalRequestsData = requestsData.requests || requestsData;
       setRequests(Array.isArray(finalRequestsData) ? finalRequestsData : []);
-      setUsers(Array.isArray(usersData) ? usersData : []);
+      setUsers([]);
       
       console.log('AdminDashboard: Final requests count', Array.isArray(finalRequestsData) ? finalRequestsData.length : 0);
       
@@ -88,7 +74,7 @@ const AdminDashboard = () => {
         total: finalRequestsData.length || 0,
         pending: finalRequestsData.filter(r => r.status === 'pending').length || 0,
         completed: finalRequestsData.filter(r => r.status === 'completed').length || 0,
-        workers: usersData.filter(u => u.userType === 'worker').length || 0
+        workers: 0
       };
       setStats(stats);
       console.log('AdminDashboard: Stats', stats);
@@ -118,9 +104,37 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    setupSocketConnection();
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
+
+  const setupSocketConnection = () => {
+    if (!user?.id) return;
+    
+    try {
+      import('socket.io-client').then(({ io }) => {
+        const socket = io('http://localhost:3001');
+        
+        socket.emit('join', user.id);
+        console.log('Admin connected to socket, joined room:', user.id);
+        
+        socket.on('new_notification', (notification) => {
+          console.log('Admin received notification:', notification);
+          
+          toast({
+            title: notification.title || 'New Notification',
+            description: notification.message || 'You have a new notification',
+          });
+          
+          // Refresh dashboard data to show new request
+          fetchDashboardData();
+        });
+      });
+    } catch (error) {
+      console.error('Socket connection error:', error);
+    }
+  };
 
   const updateRequestStatus = async (requestId, status) => {
     try {
@@ -372,7 +386,7 @@ const AdminDashboard = () => {
           )}
 
           {activeTab === "requests" && (
-            <div className="bg-gray-900 text-white p-6 rounded-lg">
+            <div className="bg-gray-900 text-white rounded-lg overflow-hidden">
               <AdminServiceRequests />
             </div>
           )}
@@ -523,34 +537,7 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Work History */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <History className="h-5 w-5 mr-2" />
-                    Work History
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {requests.filter(r => r.status === 'completed').slice(0, 3).map((request, i) => (
-                      <div key={request._id || i} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                        <div>
-                          <p className="font-medium text-white">Service Request #{request._id?.slice(-6) || `00${i+1}`}</p>
-                          <p className="text-sm text-gray-400">{request.message || 'Completed vehicle service'}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-green-500">Completed</p>
-                          <p className="text-xs text-gray-500">{new Date(request.createdAt).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {requests.filter(r => r.status === 'completed').length === 0 && (
-                      <p className="text-gray-400 text-center py-4">No completed work history</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+
             </div>
           )}
 

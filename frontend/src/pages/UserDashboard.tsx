@@ -94,7 +94,6 @@ const UserDashboard = () => {
     description: '',
     serviceType: '',
     preferredDate: '',
-    preferredTime: '',
     location: '',
     images: [] as File[],
     issue: '',
@@ -147,9 +146,9 @@ const UserDashboard = () => {
       
       const enhancedData = data.map((shop: any) => ({
         ...shop,
-        rating: Math.random() * 2 + 3,
+        rating: 4.2,
         distance: Math.random() * 15 + 1,
-        isOpen: Math.random() > 0.3,
+        isOpen: true,
         services: ['Engine Repair', 'Oil Change', 'Brake Service', 'Tire Replacement'],
         description: 'Professional automotive service with experienced mechanics',
         location: { lat: userLocation.lat + (Math.random() - 0.5) * 0.1, lng: userLocation.lng + (Math.random() - 0.5) * 0.1 },
@@ -193,30 +192,46 @@ const UserDashboard = () => {
 
     console.log('Selected workshop:', selectedWorkshop);
     console.log('Admin data:', selectedWorkshop?.admin);
+    console.log('Admin ID being sent:', selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId);
 
+    const adminId = selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id || selectedWorkshop?.adminId;
+    console.log('Extracted admin ID:', adminId);
+    console.log('Full admin object:', selectedWorkshop?.admin);
+    console.log('Full workshop object:', selectedWorkshop);
+    console.log('Available admin fields:', Object.keys(selectedWorkshop?.admin || {}));
+    
+    const requestData = {
+      userId: user?.id,
+      workshopId: selectedWorkshop?.shopId,
+      adminId: adminId,
+      userName: bookingForm.userName || `${user?.firstName} ${user?.lastName}`,
+      serviceName: bookingForm.description,
+      serviceType: bookingForm.serviceType,
+      preferredDate: bookingForm.preferredDate,
+      location: bookingForm.location,
+      issueDescription: bookingForm.issue,
+      preferredWorkerId: selectedMechanic,
+      chatWithAgent: bookingForm.chatWithAgent,
+      status: 'pending'
+    };
+    
+    if (!adminId) {
+      toast({ title: "Error", description: "Admin ID not found for this workshop", variant: "destructive" });
+      return;
+    }
+    
+    console.log('Submitting request with data:', requestData);
+    
     try {
       const response = await fetch('http://localhost:3001/api/requests/service-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user?.id,
-          workshopId: selectedWorkshop?.shopId,
-          adminId: selectedWorkshop?.admin?._id || selectedWorkshop?.admin?.id,
-          userName: bookingForm.userName || `${user?.firstName} ${user?.lastName}`,
-          serviceName: bookingForm.description,
-          serviceType: bookingForm.serviceType,
-          preferredDate: bookingForm.preferredDate,
-          preferredTime: bookingForm.preferredTime,
-          location: bookingForm.location,
-          issueDescription: bookingForm.issue,
-          preferredWorkerId: selectedMechanic,
-          chatWithAgent: bookingForm.chatWithAgent,
-          status: 'pending'
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {
         const savedRequest = await response.json();
+        console.log('Request submitted successfully:', savedRequest);
         toast({ 
           title: "Success", 
           description: "Request sent to admin successfully! Redirecting to My Requests..."
@@ -228,6 +243,10 @@ const UserDashboard = () => {
         setTimeout(() => {
           navigate('/my-requests');
         }, 1500);
+      } else {
+        const errorData = await response.text();
+        console.error('Request submission failed:', response.status, errorData);
+        toast({ title: "Error", description: `Failed to submit request: ${response.status}`, variant: "destructive" });
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to submit request", variant: "destructive" });
@@ -237,7 +256,7 @@ const UserDashboard = () => {
   const resetBookingForm = () => {
     setBookingForm({
       userName: '', serviceName: '', description: '', serviceType: '', 
-      preferredDate: '', preferredTime: '', location: '', images: [], issue: '', chatWithAgent: false
+      preferredDate: '', location: '', images: [], issue: '', chatWithAgent: false
     });
   };
 
@@ -316,7 +335,6 @@ const UserDashboard = () => {
           {[
             { key: 'home', label: 'Home', icon: Home },
             { key: 'search', label: 'Find Workshops', icon: Search },
-            { key: 'tracking', label: 'Track Service', icon: Navigation },
             { key: 'history', label: 'Service History', icon: History }
           ].map(({ key, label, icon: Icon }) => (
             <Button
@@ -435,47 +453,77 @@ const UserDashboard = () => {
           </div>
           <div className="flex items-center gap-1">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span>{workshop.mechanics.length} mechanics</span>
+            <span>{workshop.mechanics.length} workers</span>
           </div>
         </div>
         
         <p className="text-sm text-muted-foreground">{workshop.description}</p>
         
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Available Workers:</h4>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
-            {workshop.mechanics.slice(0, 3).map((mechanic, index) => (
-              <div key={index} className="flex items-center justify-between p-2 border rounded-lg bg-muted/30">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary" />
+        {workshop.mechanics.length > 0 ? (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Available Workers:</h4>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {workshop.mechanics.slice(0, 3).map((mechanic, index) => (
+                <div key={mechanic._id || index} className="flex items-center justify-between p-2 border rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p 
+                        className="text-sm font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`/worker-profile/${mechanic._id}`, '_blank');
+                        }}
+                        title="View worker profile"
+                      >
+                        {mechanic.firstName} {mechanic.lastName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Registered Worker</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{mechanic.firstName} {mechanic.lastName}</p>
-                    <p className="text-xs text-muted-foreground">Certified Mechanic</p>
+                  <div className="flex gap-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Opening worker profile:', mechanic._id);
+                        window.open(`/worker-profile/${mechanic._id}`, '_blank');
+                      }}
+                      className="text-xs px-2"
+                    >
+                      Profile
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedWorkshop(workshop);
+                        setSelectedMechanic(mechanic._id);
+                        setCurrentView('booking');
+                        setBreadcrumbs(['Dashboard', 'Book Service', `${mechanic.firstName} ${mechanic.lastName}`]);
+                      }}
+                      className="text-xs px-2"
+                    >
+                      Request
+                    </Button>
                   </div>
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedWorkshop(workshop);
-                    setSelectedMechanic(mechanic._id);
-                    setCurrentView('booking');
-                    setBreadcrumbs(['Dashboard', 'Book Service', `${mechanic.firstName} ${mechanic.lastName}`]);
-                  }}
-                >
-                  Request
-                </Button>
-              </div>
-            ))}
-            {workshop.mechanics.length > 3 && (
-              <p className="text-xs text-muted-foreground text-center">
-                +{workshop.mechanics.length - 3} more workers available
-              </p>
-            )}
+              ))}
+              {workshop.mechanics.length > 3 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  +{workshop.mechanics.length - 3} more workers available
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground">No registered workers available</p>
+          </div>
+        )}
         
         <div className="flex flex-wrap gap-1">
           {workshop.services.slice(0, 3).map((service, index) => (
@@ -487,6 +535,13 @@ const UserDashboard = () => {
         </div>
         
         <div className="flex gap-2">
+          <Button 
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/workshop/${workshop.shopId}`)}
+          >
+            View Details
+          </Button>
           <Button 
             size="sm"
             onClick={() => {
@@ -550,23 +605,13 @@ const UserDashboard = () => {
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Preferred Date</Label>
-                <Input
-                  type="date"
-                  value={bookingForm.preferredDate}
-                  onChange={(e) => setBookingForm({...bookingForm, preferredDate: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label>Preferred Time</Label>
-                <Input
-                  type="time"
-                  value={bookingForm.preferredTime}
-                  onChange={(e) => setBookingForm({...bookingForm, preferredTime: e.target.value})}
-                />
-              </div>
+            <div>
+              <Label>Preferred Date</Label>
+              <Input
+                type="date"
+                value={bookingForm.preferredDate}
+                onChange={(e) => setBookingForm({...bookingForm, preferredDate: e.target.value})}
+              />
             </div>
             
             <div>
@@ -791,7 +836,7 @@ const UserDashboard = () => {
             {viewMode === 'map' ? (
               <Card>
                 <CardContent className="p-6">
-                  <div className="h-96 rounded overflow-hidden">
+                  <div className="h-96 rounded overflow-hidden relative">
                     <iframe
                       src={`https://www.openstreetmap.org/export/embed.html?bbox=${userLocation.lng-0.05},${userLocation.lat-0.05},${userLocation.lng+0.05},${userLocation.lat+0.05}&layer=mapnik`}
                       width="100%"
@@ -801,10 +846,72 @@ const UserDashboard = () => {
                       loading="lazy"
                     />
                   </div>
-                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Showing workshops near:</span>
-                      <span className="font-mono">{userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}</span>
+                  <div className="mt-4 space-y-3">
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span>Your Location:</span>
+                        <span className="font-mono">{userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Showing {filteredWorkshops.length} workshops with {filteredWorkshops.reduce((total, w) => total + w.mechanics.length, 0)} available workers within {filters.distance[0]} km
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Nearby Workers & Workshops:</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                        {filteredWorkshops.map((workshop) => (
+                          <div key={workshop.shopId} className="p-3 border rounded-lg bg-background/50">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-medium text-sm">{workshop.shopName}</h5>
+                              <Badge variant={workshop.isOpen ? 'default' : 'secondary'} className="text-xs">
+                                {workshop.distance.toFixed(1)} km
+                              </Badge>
+                            </div>
+                            <div className="space-y-1">
+                              {workshop.mechanics.slice(0, 2).map((mechanic, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-xs">
+                                  <span className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    {mechanic.firstName} {mechanic.lastName}
+                                  </span>
+                                  <div className="flex gap-1">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-6 px-1 text-xs"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`/worker-profile/${mechanic._id}`, '_blank');
+                                      }}
+                                    >
+                                      Profile
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-6 px-1 text-xs"
+                                      onClick={() => {
+                                        setSelectedWorkshop(workshop);
+                                        setSelectedMechanic(mechanic._id);
+                                        setCurrentView('booking');
+                                        setBreadcrumbs(['Dashboard', 'Book Service', `${mechanic.firstName} ${mechanic.lastName}`]);
+                                      }}
+                                    >
+                                      Request
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                              {workshop.mechanics.length > 2 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{workshop.mechanics.length - 2} more workers
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -829,14 +936,12 @@ const UserDashboard = () => {
         );
       case 'booking':
         return renderBookingForm();
-      case 'tracking':
-        return renderServiceTracking();
       case 'history':
         return renderServiceHistory();
       default:
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => {
                 setCurrentView('search');
                 setBreadcrumbs(['Dashboard', 'Find Workshops']);
@@ -845,17 +950,6 @@ const UserDashboard = () => {
                   <Search className="h-12 w-12 mx-auto mb-4 text-primary" />
                   <h3 className="font-semibold mb-2">Find Workshops</h3>
                   <p className="text-sm text-muted-foreground">Search and filter nearby workshops</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => {
-                setCurrentView('tracking');
-                setBreadcrumbs(['Dashboard', 'Track Service']);
-              }}>
-                <CardContent className="p-6 text-center">
-                  <Navigation className="h-12 w-12 mx-auto mb-4 text-primary" />
-                  <h3 className="font-semibold mb-2">Track Service</h3>
-                  <p className="text-sm text-muted-foreground">Monitor your active service requests</p>
                 </CardContent>
               </Card>
               
